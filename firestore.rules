@@ -1,0 +1,38 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+
+    // Users can only read/write their own user document
+    match /users/{userId} {
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+    }
+
+
+    // Tournaments: organizer has full control; public read if enabled
+    match /tournaments/{tournamentId} {
+      allow read: if resource.data.publicViewEnabled == true
+                  || (request.auth != null && request.auth.uid == resource.data.organizerId);
+      allow create: if request.auth != null;
+      allow update, delete: if request.auth != null
+                            && request.auth.uid == resource.data.organizerId;
+
+
+      // Players sub-collection
+      match /players/{playerId} {
+        allow read: if get(/databases/$(database)/documents/tournaments/$(tournamentId)).data.publicViewEnabled == true
+                    || (request.auth != null);
+        allow write: if request.auth != null;
+      }
+
+
+      // Matches sub-collection
+      match /matches/{matchId} {
+        allow read: if get(/databases/$(database)/documents/tournaments/$(tournamentId)).data.publicViewEnabled == true
+                    || (request.auth != null);
+        // Write allowed if organizer OR if the venuePin was validated (handle in app logic)
+        allow write: if request.auth != null;
+      }
+    }
+  }
+}
