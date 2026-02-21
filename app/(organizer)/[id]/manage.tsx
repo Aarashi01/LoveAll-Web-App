@@ -1,5 +1,9 @@
 import { SafeAreaView, StyleSheet, Text, View } from 'react-native';
-import { Link, useLocalSearchParams } from 'expo-router';
+import { router, useLocalSearchParams } from 'expo-router';
+
+import { AppButton } from '@/components/ui/AppButton';
+import { AppCard } from '@/components/ui/AppCard';
+import { theme } from '@/constants/theme';
 
 export default function TournamentManageScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -18,18 +22,23 @@ export default function TournamentManageScreen() {
         <Text style={styles.title}>Tournament Manage</Text>
         <Text style={styles.meta}>Tournament ID: {id}</Text>
 
-        <Link href={{ pathname: '/(organizer)/[id]/setup', params: { id } }} style={styles.linkCard}>
-          Player Setup
-        </Link>
-        <Link
-          href={{ pathname: '/(organizer)/[id]/schedule', params: { id } }}
-          style={styles.linkCard}
-        >
-          Schedule
-        </Link>
-        <Link href={{ pathname: '/(organizer)/[id]/results', params: { id } }} style={styles.linkCard}>
-          Results & Export
-        </Link>
+        <AppCard>
+          <Text style={styles.sectionLabel}>Operations</Text>
+          <AppButton
+            variant="secondary"
+            label="Player Setup"
+            onPress={() => router.push({ pathname: '/(organizer)/[id]/setup', params: { id } })}
+          />
+          <AppButton
+            variant="secondary"
+            label="Schedule"
+            onPress={() => router.push({ pathname: '/(organizer)/[id]/schedule', params: { id } })}
+          />
+          <AppButton
+            label="Results & Export"
+            onPress={() => router.push({ pathname: '/(organizer)/[id]/results', params: { id } })}
+          />
+        </AppCard>
       </View>
     </SafeAreaView>
   );
@@ -38,17 +47,17 @@ export default function TournamentManageScreen() {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: '#F8FAFC',
+    backgroundColor: theme.colors.background,
   },
   centered: {
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
     padding: 24,
-    backgroundColor: '#F8FAFC',
+    backgroundColor: theme.colors.background,
   },
   errorText: {
-    color: '#B91C1C',
+    color: theme.colors.danger,
     fontWeight: '700',
   },
   content: {
@@ -58,22 +67,19 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 24,
     fontWeight: '900',
-    color: '#0F172A',
+    color: theme.colors.text,
   },
   meta: {
-    color: '#475569',
+    color: theme.colors.textMuted,
     fontWeight: '600',
     marginBottom: 4,
   },
-  linkCard: {
-    backgroundColor: '#FFFFFF',
-    borderWidth: 1,
-    borderColor: '#CBD5E1',
-    borderRadius: 12,
-    paddingHorizontal: 14,
-    paddingVertical: 14,
-    color: '#0F172A',
-    fontWeight: '800',
-    overflow: 'hidden',
+  sectionLabel: {
+    color: theme.colors.textMuted,
+    fontWeight: '900',
+    letterSpacing: 0.8,
+    textTransform: 'uppercase',
+    fontSize: 12,
   },
 });
+

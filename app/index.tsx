@@ -1,6 +1,7 @@
 import { ActivityIndicator, SafeAreaView } from 'react-native';
 import { Redirect } from 'expo-router';
 
+import { theme } from '@/constants/theme';
 import { useAuth } from '@/hooks/useAuth';
 
 export default function IndexScreen() {
@@ -8,7 +9,14 @@ export default function IndexScreen() {
 
   if (loading) {
     return (
-      <SafeAreaView style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
+      <SafeAreaView
+        style={{
+          flex: 1,
+          alignItems: 'center',
+          justifyContent: 'center',
+          backgroundColor: theme.colors.background,
+        }}
+      >
         <ActivityIndicator size="large" />
       </SafeAreaView>
     );

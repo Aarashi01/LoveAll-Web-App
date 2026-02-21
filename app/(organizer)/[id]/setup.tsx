@@ -9,13 +9,17 @@ import {
   StyleSheet,
   Switch,
   Text,
-  TextInput,
   View,
 } from 'react-native';
 import * as DocumentPicker from 'expo-document-picker';
 import * as FileSystem from 'expo-file-system/legacy';
 import { Link, useLocalSearchParams } from 'expo-router';
 
+import { AppButton } from '@/components/ui/AppButton';
+import { AppCard } from '@/components/ui/AppCard';
+import { AppInput } from '@/components/ui/AppInput';
+import { PlayerList } from '@/components/tournament/PlayerList';
+import { theme, toCategoryLabel, toPlayerGenderLabel } from '@/constants/theme';
 import { useTournament } from '@/hooks/useTournament';
 import { addPlayer, deletePlayer, subscribeToPlayers, updatePlayer } from '@/lib/firestore/players';
 import {
@@ -26,6 +30,50 @@ import {
 import { type MatchCategory, type PlayerDocument, type PlayerGender } from '@/lib/firestore/types';
 
 const FALLBACK_CATEGORIES: MatchCategory[] = ['MS', 'WS', 'MD', 'WD', 'XD'];
+
+function isDoublesCategory(category: MatchCategory): boolean {
+  return category === 'MD' || category === 'WD' || category === 'XD';
+}
+
+function normalizeName(value: string): string {
+  return value.trim().toLowerCase().replace(/\s+/g, ' ');
+}
+
+function isCategoryAllowedForGender(category: MatchCategory, gender: PlayerGender): boolean {
+  if (category === 'XD') return true;
+  if (gender === 'M') return category === 'MS' || category === 'MD';
+  return category === 'WS' || category === 'WD';
+}
+
+function getCompatibleDoublesCategories(
+  currentGender: PlayerGender,
+  candidateGender: PlayerGender,
+  currentCategories: MatchCategory[],
+  candidateCategories: MatchCategory[],
+): MatchCategory[] {
+  const compatible: MatchCategory[] = [];
+
+  currentCategories.forEach((category) => {
+    if (!isDoublesCategory(category)) return;
+    if (!candidateCategories.includes(category)) return;
+
+    if (category === 'MD' && currentGender === 'M' && candidateGender === 'M') {
+      compatible.push(category);
+      return;
+    }
+
+    if (category === 'WD' && currentGender === 'F' && candidateGender === 'F') {
+      compatible.push(category);
+      return;
+    }
+
+    if (category === 'XD' && currentGender !== candidateGender) {
+      compatible.push(category);
+    }
+  });
+
+  return compatible;
+}
 
 export default function TournamentSetupScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -43,6 +91,8 @@ export default function TournamentSetupScreen() {
   const [saving, setSaving] = useState(false);
   const [importing, setImporting] = useState(false);
   const [importSummary, setImportSummary] = useState<string | null>(null);
+  const [editingPlayerId, setEditingPlayerId] = useState<string | null>(null);
+  const [searchQuery, setSearchQuery] = useState('');
 
   useEffect(() => {
     if (!id) {
@@ -62,17 +112,63 @@ export default function TournamentSetupScreen() {
   }, [id]);
 
   const enabledCategories = tournament?.categories ?? FALLBACK_CATEGORIES;
+  const selectedDoublesCategories = useMemo(
+    () => selectedCategories.filter(isDoublesCategory),
+    [selectedCategories],
+  );
+  const partnerSelectionEnabled = selectedDoublesCategories.length > 0;
+
+  const editingPlayer = useMemo(
+    () => players.find((player) => player.id === editingPlayerId) ?? null,
+    [players, editingPlayerId],
+  );
 
   const availablePartners = useMemo(
     () =>
       players.filter((player) => {
-        if (player.partnerId) return false;
-        if (!selectedCategories.some((category) => category === 'MD' || category === 'WD' || category === 'XD')) {
+        if (editingPlayerId && player.id === editingPlayerId) return false;
+        if (player.partnerId && player.partnerId !== editingPlayerId) return false;
+        if (!partnerSelectionEnabled) {
           return false;
         }
-        return true;
+
+        const compatibleCategories = getCompatibleDoublesCategories(
+          gender,
+          player.gender,
+          selectedCategories,
+          player.categories,
+        );
+        return compatibleCategories.length > 0;
       }),
-    [players, selectedCategories],
+    [editingPlayerId, gender, partnerSelectionEnabled, players, selectedCategories],
+  );
+
+  const filteredPlayers = useMemo(() => {
+    const query = searchQuery.trim().toLowerCase();
+    if (!query) return players;
+
+    return players.filter((player) => {
+      const baseText = [
+        player.name,
+        player.department ?? '',
+        toPlayerGenderLabel(player.gender),
+        ...player.categories.map(toCategoryLabel),
+      ]
+        .join(' ')
+        .toLowerCase();
+
+      return baseText.includes(query);
+    });
+  }, [players, searchQuery]);
+
+  const seededCount = useMemo(() => players.filter((player) => player.seeded).length, [players]);
+  const pairedCount = useMemo(
+    () => players.filter((player) => Boolean(player.partnerId)).length,
+    [players],
+  );
+  const availablePartnerIds = useMemo(
+    () => new Set(availablePartners.map((candidate) => candidate.id)),
+    [availablePartners],
   );
 
   const clearForm = () => {
@@ -82,19 +178,36 @@ export default function TournamentSetupScreen() {
     setSelectedCategories([]);
     setPartnerId(null);
     setSeeded(false);
+    setEditingPlayerId(null);
   };
 
   const toggleCategory = (category: MatchCategory) => {
+    if (!isCategoryAllowedForGender(category, gender)) return;
     setSelectedCategories((prev) =>
       prev.includes(category) ? prev.filter((item) => item !== category) : [...prev, category],
     );
   };
 
-  const handleAddPlayer = async () => {
+  const handleStartEdit = (player: PlayerDocument) => {
+    setError(null);
+    setImportSummary(null);
+    setEditingPlayerId(player.id);
+    setName(player.name);
+    setGender(player.gender);
+    setDepartment(player.department ?? '');
+    setSelectedCategories(player.categories);
+    setPartnerId(player.partnerId);
+    setSeeded(player.seeded);
+  };
+
+  const handleSavePlayer = async () => {
     if (!id) return;
     setError(null);
+    setImportSummary(null);
 
-    if (!name.trim()) {
+    const trimmedName = name.trim();
+
+    if (!trimmedName) {
       setError('Player name is required.');
       return;
     }
@@ -104,19 +217,91 @@ export default function TournamentSetupScreen() {
       return;
     }
 
+    const normalized = normalizeName(trimmedName);
+    const duplicate = players.find(
+      (player) => normalizeName(player.name) === normalized && player.id !== editingPlayerId,
+    );
+    if (duplicate) {
+      setError(`"${trimmedName}" already exists in the player list.`);
+      return;
+    }
+
+    let resolvedPartnerId = partnerId;
+    if (!partnerSelectionEnabled) {
+      resolvedPartnerId = null;
+    }
+
+    if (resolvedPartnerId) {
+      if (resolvedPartnerId === editingPlayerId) {
+        setError('A player cannot be partnered with themselves.');
+        return;
+      }
+
+      const partner = players.find((player) => player.id === resolvedPartnerId);
+      if (!partner) {
+        setError('Selected partner no longer exists. Please choose again.');
+        return;
+      }
+
+      if (partner.partnerId && partner.partnerId !== editingPlayerId) {
+        setError('Selected partner is already paired with another player.');
+        return;
+      }
+
+      const compatibleCategories = getCompatibleDoublesCategories(
+        gender,
+        partner.gender,
+        selectedCategories,
+        partner.categories,
+      );
+
+      if (compatibleCategories.length === 0) {
+        setError(
+          'Selected partner is not compatible with your chosen doubles categories. Choose another partner or update categories.',
+        );
+        return;
+      }
+    }
+
     try {
       setSaving(true);
-      const newPlayerId = await addPlayer(id, {
-        name: name.trim(),
-        gender,
-        department: department.trim() || undefined,
-        categories: selectedCategories,
-        partnerId,
-        seeded,
-      });
 
-      if (partnerId) {
-        await updatePlayer(id, partnerId, { partnerId: newPlayerId });
+      if (editingPlayerId) {
+        const previous = players.find((player) => player.id === editingPlayerId);
+        if (!previous) {
+          setError('Player record is not available anymore. Please refresh and try again.');
+          return;
+        }
+
+        await updatePlayer(id, editingPlayerId, {
+          name: trimmedName,
+          gender,
+          department: department.trim() || undefined,
+          categories: selectedCategories,
+          partnerId: resolvedPartnerId,
+          seeded,
+        });
+
+        if (previous.partnerId && previous.partnerId !== resolvedPartnerId) {
+          await updatePlayer(id, previous.partnerId, { partnerId: null });
+        }
+
+        if (resolvedPartnerId) {
+          await updatePlayer(id, resolvedPartnerId, { partnerId: editingPlayerId });
+        }
+      } else {
+        const newPlayerId = await addPlayer(id, {
+          name: trimmedName,
+          gender,
+          department: department.trim() || undefined,
+          categories: selectedCategories,
+          partnerId: resolvedPartnerId,
+          seeded,
+        });
+
+        if (resolvedPartnerId) {
+          await updatePlayer(id, resolvedPartnerId, { partnerId: newPlayerId });
+        }
       }
 
       clearForm();
@@ -179,8 +364,16 @@ export default function TournamentSetupScreen() {
       }
 
       const partnerTokens = new Map<string, string[]>();
+      const existingNames = new Set(players.map((player) => normalizeName(player.name)));
+      const importWarnings = [...parsed.warnings];
       let added = 0;
       for (const imported of parsed.players) {
+        const importedName = normalizeName(imported.name);
+        if (existingNames.has(importedName)) {
+          importWarnings.push(`Skipped duplicate name: ${imported.name}`);
+          continue;
+        }
+
         const createdId = await addPlayer(id, {
           name: imported.name,
           gender: imported.gender,
@@ -191,6 +384,7 @@ export default function TournamentSetupScreen() {
           groupId: null,
         });
         added += 1;
+        existingNames.add(importedName);
 
         if (imported.partnerToken) {
           const ids = partnerTokens.get(imported.partnerToken) ?? [];
@@ -206,8 +400,8 @@ export default function TournamentSetupScreen() {
       }
 
       const warningText =
-        parsed.warnings.length > 0
-          ? ` | Warnings: ${parsed.warnings.slice(0, 3).join(' ')}`
+        importWarnings.length > 0
+          ? ` | Warnings: ${importWarnings.slice(0, 3).join(' ')}`
           : '';
       setImportSummary(
         `Imported ${added} players (${parsed.mode.toUpperCase()} mode detected).${warningText}`,
@@ -242,6 +436,38 @@ export default function TournamentSetupScreen() {
     ]);
   };
 
+  useEffect(() => {
+    if (partnerSelectionEnabled) return;
+    if (partnerId !== null) setPartnerId(null);
+  }, [partnerId, partnerSelectionEnabled]);
+
+  useEffect(() => {
+    if (!editingPlayerId) return;
+    const exists = players.some((player) => player.id === editingPlayerId);
+    if (!exists) {
+      clearForm();
+      setError('The player being edited was removed. Form has been reset.');
+    }
+  }, [editingPlayerId, players]);
+
+  useEffect(() => {
+    if (selectedCategories.length === 0) return;
+    const allowed = new Set(enabledCategories);
+    const next = selectedCategories.filter(
+      (category) => allowed.has(category) && isCategoryAllowedForGender(category, gender),
+    );
+    if (next.length !== selectedCategories.length) {
+      setSelectedCategories(next);
+    }
+  }, [enabledCategories, gender, selectedCategories]);
+
+  useEffect(() => {
+    if (partnerId === null) return;
+    if (!availablePartnerIds.has(partnerId)) {
+      setPartnerId(null);
+    }
+  }, [availablePartnerIds, partnerId]);
+
   if (!id) {
     return (
       <SafeAreaView style={styles.centered}>
@@ -275,45 +501,48 @@ export default function TournamentSetupScreen() {
         {error ? <Text style={styles.errorBanner}>{error}</Text> : null}
         {importSummary ? <Text style={styles.successBanner}>{importSummary}</Text> : null}
 
-        <View style={styles.card}>
+        <AppCard>
           <Text style={styles.sectionTitle}>Bulk Import (Excel)</Text>
           <Text style={styles.helpText}>
             Download a template, fill player rows in Excel, then upload. Import auto-detects singles vs doubles format.
           </Text>
           <View style={styles.templateActions}>
-            <Pressable style={styles.templateButton} onPress={() => void handleDownloadTemplate('singles')}>
-              <Text style={styles.templateButtonText}>Download Singles Template</Text>
-            </Pressable>
-            <Pressable style={styles.templateButton} onPress={() => void handleDownloadTemplate('doubles')}>
-              <Text style={styles.templateButtonText}>Download Doubles Template</Text>
-            </Pressable>
+            <AppButton
+              variant="secondary"
+              label="Download Singles Template"
+              onPress={() => void handleDownloadTemplate('singles')}
+            />
+            <AppButton
+              variant="secondary"
+              label="Download Doubles Template"
+              onPress={() => void handleDownloadTemplate('doubles')}
+            />
           </View>
-          <Pressable
-            style={[styles.importButton, importing && styles.addButtonDisabled]}
+          <AppButton
+            label={importing ? 'Importing...' : 'Upload Excel File'}
             onPress={() => void handleBulkImport()}
             disabled={importing}
-          >
-            <Text style={styles.importButtonText}>{importing ? 'Importing...' : 'Upload Excel File'}</Text>
-          </Pressable>
-        </View>
+          />
+        </AppCard>
 
-        <View style={styles.card}>
+        <AppCard>
           <Text style={styles.sectionTitle}>Register Player</Text>
+          <Text style={styles.helpText}>
+            Add players one by one or edit existing players. Partner linking is available only when a doubles category is selected.
+          </Text>
 
-          <Text style={styles.label}>Name</Text>
-          <TextInput
+          <AppInput
+            label="Player Name"
             value={name}
             onChangeText={setName}
             placeholder="Enter player name"
-            style={styles.input}
           />
 
-          <Text style={styles.label}>Department (optional)</Text>
-          <TextInput
+          <AppInput
+            label="Department (Optional)"
             value={department}
             onChangeText={setDepartment}
             placeholder="e.g. Engineering"
-            style={styles.input}
           />
 
           <Text style={styles.label}>Gender</Text>
@@ -325,7 +554,7 @@ export default function TournamentSetupScreen() {
                 onPress={() => setGender(value)}
               >
                 <Text style={[styles.segmentText, gender === value && styles.segmentTextActive]}>
-                  {value}
+                  {toPlayerGenderLabel(value)}
                 </Text>
               </Pressable>
             ))}
@@ -335,13 +564,27 @@ export default function TournamentSetupScreen() {
           <View style={styles.chipsWrap}>
             {enabledCategories.map((category) => {
               const selected = selectedCategories.includes(category);
+              const disabled = !isCategoryAllowedForGender(category, gender);
               return (
                 <Pressable
                   key={category}
-                  style={[styles.chip, selected && styles.chipActive]}
+                  style={[
+                    styles.chip,
+                    selected && styles.chipActive,
+                    disabled && styles.chipDisabled,
+                  ]}
                   onPress={() => toggleCategory(category)}
+                  disabled={disabled}
                 >
-                  <Text style={[styles.chipText, selected && styles.chipTextActive]}>{category}</Text>
+                  <Text
+                    style={[
+                      styles.chipText,
+                      selected && styles.chipTextActive,
+                      disabled && styles.chipTextDisabled,
+                    ]}
+                  >
+                    {toCategoryLabel(category)}
+                  </Text>
                 </Pressable>
               );
             })}
@@ -353,65 +596,96 @@ export default function TournamentSetupScreen() {
           </View>
 
           <Text style={styles.label}>Doubles Partner (optional)</Text>
-          <View style={styles.partnerWrap}>
-            <Pressable
-              style={[styles.partnerOption, partnerId === null && styles.partnerOptionActive]}
-              onPress={() => setPartnerId(null)}
-            >
-              <Text style={[styles.partnerText, partnerId === null && styles.partnerTextActive]}>
-                No Partner
-              </Text>
-            </Pressable>
-            {availablePartners.map((candidate) => (
+          {partnerSelectionEnabled ? (
+            <View style={styles.partnerWrap}>
               <Pressable
-                key={candidate.id}
-                style={[styles.partnerOption, partnerId === candidate.id && styles.partnerOptionActive]}
-                onPress={() => setPartnerId(candidate.id)}
+                style={[styles.partnerOption, partnerId === null && styles.partnerOptionActive]}
+                onPress={() => setPartnerId(null)}
               >
-                <Text style={[styles.partnerText, partnerId === candidate.id && styles.partnerTextActive]}>
-                  {candidate.name}
+                <Text style={[styles.partnerText, partnerId === null && styles.partnerTextActive]}>
+                  No Partner
                 </Text>
               </Pressable>
-            ))}
-          </View>
-
-          <Pressable
-            style={[styles.addButton, saving && styles.addButtonDisabled]}
-            onPress={() => void handleAddPlayer()}
-            disabled={saving}
-          >
-            <Text style={styles.addButtonText}>{saving ? 'Adding...' : 'Add Player'}</Text>
-          </Pressable>
-        </View>
-
-        <View style={styles.card}>
-          <Text style={styles.sectionTitle}>Registered Players ({players.length})</Text>
-          {players.length === 0 ? (
-            <Text style={styles.emptyText}>No players added yet.</Text>
-          ) : (
-            players.map((player) => (
-              <View key={player.id} style={styles.playerRow}>
-                <View style={styles.playerInfo}>
-                  <Text style={styles.playerName}>{player.name}</Text>
-                  <Text style={styles.playerMeta}>
-                    {player.gender} | {player.categories.join(', ')}
-                    {player.department ? ` | ${player.department}` : ''}
+              {availablePartners.map((candidate) => (
+                <Pressable
+                  key={candidate.id}
+                  style={[styles.partnerOption, partnerId === candidate.id && styles.partnerOptionActive]}
+                  onPress={() => setPartnerId(candidate.id)}
+                >
+                  <Text style={[styles.partnerText, partnerId === candidate.id && styles.partnerTextActive]}>
+                    {candidate.name}
                   </Text>
-                  {player.partnerId ? (
-                    <Text style={styles.partnerMeta}>
-                      Partner:{' '}
-                      {players.find((candidate) => candidate.id === player.partnerId)?.name ?? 'Linked'}
-                    </Text>
-                  ) : null}
-                </View>
-
-                <Pressable style={styles.deleteButton} onPress={() => handleDelete(player)}>
-                  <Text style={styles.deleteButtonText}>Delete</Text>
+                  <Text style={styles.partnerSubtext}>
+                    {toCategoryLabel(
+                      getCompatibleDoublesCategories(
+                        gender,
+                        candidate.gender,
+                        selectedCategories,
+                        candidate.categories,
+                      )[0],
+                    )}
+                  </Text>
                 </Pressable>
-              </View>
-            ))
+              ))}
+              {availablePartners.length === 0 ? (
+                <Text style={styles.helpText}>No compatible partner is currently available.</Text>
+              ) : null}
+            </View>
+          ) : (
+            <Text style={styles.helpText}>
+              Select at least one doubles category to enable partner pairing.
+            </Text>
           )}
-        </View>
+
+          <AppButton
+            label={saving ? (editingPlayer ? 'Saving...' : 'Adding...') : editingPlayer ? 'Save Player' : 'Add Player'}
+            onPress={() => void handleSavePlayer()}
+            disabled={saving}
+          />
+
+          {editingPlayer ? (
+            <AppButton
+              variant="secondary"
+              label="Cancel Edit"
+              onPress={clearForm}
+              disabled={saving}
+            />
+          ) : null}
+        </AppCard>
+
+        <AppCard>
+          <Text style={styles.sectionTitle}>Roster Overview</Text>
+          <View style={styles.metricsRow}>
+            <View style={styles.metricCard}>
+              <Text style={styles.metricValue}>{players.length}</Text>
+              <Text style={styles.metricLabel}>Players</Text>
+            </View>
+            <View style={styles.metricCard}>
+              <Text style={styles.metricValue}>{seededCount}</Text>
+              <Text style={styles.metricLabel}>Seeded</Text>
+            </View>
+            <View style={styles.metricCard}>
+              <Text style={styles.metricValue}>{Math.floor(pairedCount / 2)}</Text>
+              <Text style={styles.metricLabel}>Pairs</Text>
+            </View>
+          </View>
+        </AppCard>
+
+        <AppCard>
+          <Text style={styles.sectionTitle}>Registered Players ({filteredPlayers.length})</Text>
+          <AppInput
+            label="Search Players"
+            value={searchQuery}
+            onChangeText={setSearchQuery}
+            placeholder="Search by name, department, gender, or category"
+          />
+          <PlayerList
+            players={filteredPlayers}
+            allPlayers={players}
+            onEdit={handleStartEdit}
+            onDelete={handleDelete}
+          />
+        </AppCard>
 
         <Link href={{ pathname: '/(organizer)/[id]/schedule', params: { id } }} style={styles.nextLink}>
           Continue to Schedule
@@ -424,13 +698,13 @@ export default function TournamentSetupScreen() {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: '#F1F4F8',
+    backgroundColor: theme.colors.background,
   },
   centered: {
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#F1F4F8',
+    backgroundColor: theme.colors.background,
     padding: 24,
   },
   content: {
@@ -470,14 +744,6 @@ const styles = StyleSheet.create({
     padding: 10,
     fontWeight: '700',
   },
-  card: {
-    backgroundColor: '#FFFFFF',
-    borderWidth: 1,
-    borderColor: '#E2E8F0',
-    borderRadius: 14,
-    padding: 12,
-    gap: 10,
-  },
   helpText: {
     color: '#475569',
     fontWeight: '600',
@@ -485,32 +751,6 @@ const styles = StyleSheet.create({
   },
   templateActions: {
     gap: 8,
-  },
-  templateButton: {
-    minHeight: 40,
-    borderRadius: 10,
-    borderWidth: 1,
-    borderColor: '#CBD5E1',
-    backgroundColor: '#FFFFFF',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingHorizontal: 10,
-  },
-  templateButtonText: {
-    color: '#0F172A',
-    fontWeight: '800',
-    fontSize: 12,
-  },
-  importButton: {
-    minHeight: 44,
-    borderRadius: 10,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: '#166534',
-  },
-  importButtonText: {
-    color: '#FFFFFF',
-    fontWeight: '900',
   },
   sectionTitle: {
     color: '#334155',
@@ -520,14 +760,6 @@ const styles = StyleSheet.create({
   label: {
     color: '#334155',
     fontWeight: '800',
-  },
-  input: {
-    borderWidth: 1,
-    borderColor: '#CBD5E1',
-    backgroundColor: '#F8FAFC',
-    borderRadius: 10,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
   },
   segmented: {
     flexDirection: 'row',
@@ -572,12 +804,18 @@ const styles = StyleSheet.create({
     borderColor: '#3B82F6',
     backgroundColor: '#EAF2FF',
   },
+  chipDisabled: {
+    opacity: 0.45,
+  },
   chipText: {
     color: '#334155',
     fontWeight: '700',
   },
   chipTextActive: {
     color: '#1D4ED8',
+  },
+  chipTextDisabled: {
+    color: '#64748B',
   },
   switchRow: {
     flexDirection: 'row',
@@ -612,64 +850,34 @@ const styles = StyleSheet.create({
   partnerTextActive: {
     color: '#166534',
   },
-  addButton: {
-    minHeight: 46,
-    borderRadius: 10,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: '#2F80ED',
-  },
-  addButtonDisabled: {
-    opacity: 0.5,
-  },
-  addButtonText: {
-    color: '#FFFFFF',
-    fontWeight: '900',
-    fontSize: 15,
-  },
-  emptyText: {
+  partnerSubtext: {
+    marginTop: 3,
     color: '#64748B',
-    fontWeight: '700',
-  },
-  playerRow: {
-    borderWidth: 1,
-    borderColor: '#E2E8F0',
-    borderRadius: 10,
-    backgroundColor: '#F8FAFC',
-    padding: 10,
-    flexDirection: 'row',
-    gap: 10,
-    alignItems: 'center',
-  },
-  playerInfo: {
-    flex: 1,
-    gap: 2,
-  },
-  playerName: {
-    color: '#0F172A',
-    fontWeight: '900',
-  },
-  playerMeta: {
-    color: '#475569',
     fontWeight: '600',
     fontSize: 12,
   },
-  partnerMeta: {
-    color: '#166534',
-    fontWeight: '700',
-    fontSize: 12,
+  metricsRow: {
+    flexDirection: 'row',
+    gap: 8,
   },
-  deleteButton: {
-    minHeight: 36,
-    borderRadius: 8,
-    paddingHorizontal: 12,
+  metricCard: {
+    flex: 1,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    backgroundColor: '#F8FAFC',
+    paddingVertical: 10,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#B91C1C',
   },
-  deleteButtonText: {
-    color: '#FFFFFF',
-    fontWeight: '800',
+  metricValue: {
+    color: '#0F172A',
+    fontWeight: '900',
+    fontSize: 18,
+  },
+  metricLabel: {
+    color: '#64748B',
+    fontWeight: '700',
     fontSize: 12,
   },
   nextLink: {

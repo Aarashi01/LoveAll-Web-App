@@ -1,28 +1,48 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
   Platform,
-  Pressable,
   SafeAreaView,
   ScrollView,
   StyleSheet,
   Text,
   View,
+  useWindowDimensions,
 } from 'react-native';
-import { Link, router } from 'expo-router';
+import { router } from 'expo-router';
 
+import { AppButton } from '@/components/ui/AppButton';
+import { AppCard } from '@/components/ui/AppCard';
+import { TournamentCard } from '@/components/tournament/TournamentCard';
+import { theme } from '@/constants/theme';
 import { useAuth } from '@/hooks/useAuth';
 import { deleteTournament, subscribeToOrganizerTournaments } from '@/lib/firestore/tournaments';
 import { type TournamentDocument } from '@/lib/firestore/types';
 
 export default function OrganizerDashboardScreen() {
   const { user, loading: authLoading, logout } = useAuth();
+  const { width } = useWindowDimensions();
+  const isCompact = width < 760;
   const organizerUser = user && !user.isAnonymous ? user : null;
   const [tournaments, setTournaments] = useState<TournamentDocument[]>([]);
   const [loading, setLoading] = useState(true);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [deleteError, setDeleteError] = useState<string | null>(null);
+  const stats = useMemo(() => {
+    const drafts = tournaments.filter((item) => item.status === 'draft').length;
+    const active = tournaments.filter(
+      (item) => item.status === 'group_stage' || item.status === 'knockout'
+    ).length;
+    const completed = tournaments.filter((item) => item.status === 'completed').length;
+
+    return [
+      { label: 'Total Tournaments', value: tournaments.length, tone: 'default' as const },
+      { label: 'Active Now', value: active, tone: 'active' as const },
+      { label: 'Drafts', value: drafts, tone: 'draft' as const },
+      { label: 'Completed', value: completed, tone: 'completed' as const },
+    ];
+  }, [tournaments]);
 
   useEffect(() => {
     if (!organizerUser?.uid) {
@@ -50,11 +70,11 @@ export default function OrganizerDashboardScreen() {
   if (!organizerUser) {
     return (
       <SafeAreaView style={styles.centered}>
-        <Text style={styles.title}>Organizer Dashboard</Text>
-        <Text style={styles.subtitle}>Log in to view and manage tournaments.</Text>
-        <Link href="/(auth)/login" style={styles.loginLink}>
-          Go to Login
-        </Link>
+        <AppCard style={styles.authCard}>
+          <Text style={styles.title}>Organizer Dashboard</Text>
+          <Text style={styles.subtitle}>Log in to view and manage tournaments.</Text>
+          <AppButton label="Go to Login" onPress={() => router.push('/(auth)/login')} />
+        </AppCard>
       </SafeAreaView>
     );
   }
@@ -91,69 +111,98 @@ export default function OrganizerDashboardScreen() {
 
   return (
     <SafeAreaView style={styles.safeArea}>
+      <View pointerEvents="none" style={styles.backgroundLayer}>
+        <View style={[styles.glowOrb, styles.glowOrbTop]} />
+        <View style={[styles.glowOrb, styles.glowOrbBottom]} />
+      </View>
       <ScrollView contentContainerStyle={styles.content}>
-        <Text style={styles.title}>Organizer Dashboard</Text>
-        <Pressable style={styles.logoutButton} onPress={() => void logout()}>
-          <Text style={styles.logoutText}>Log Out</Text>
-        </Pressable>
-        <Link href="/(organizer)/new-tournament" style={styles.newLink}>
-          + Create Tournament
-        </Link>
+        <AppCard style={styles.headerCard}>
+          <View style={[styles.headerRow, isCompact && styles.headerRowStacked]}>
+            <View style={styles.headerCopy}>
+              <Text style={styles.eyebrow}>Tournament Control Center</Text>
+              <Text style={styles.title}>Organizer Dashboard</Text>
+              <Text style={styles.subtitle}>
+                Create tournaments, manage players, and publish results with a cleaner workflow.
+              </Text>
+            </View>
+            <View style={[styles.toolbar, isCompact && styles.toolbarStack]}>
+              <AppButton
+                variant="secondary"
+                label="Log Out"
+                onPress={() => void logout()}
+                style={styles.toolbarButton}
+                labelStyle={styles.logoutText}
+              />
+              <AppButton
+                label="+ Create Tournament"
+                onPress={() => router.push('/(organizer)/new-tournament')}
+                style={styles.toolbarButton}
+              />
+            </View>
+          </View>
+          <View style={styles.statsGrid}>
+            {stats.map((item) => (
+              <View
+                key={item.label}
+                style={[
+                  styles.statTile,
+                  item.tone === 'active' && styles.statTileActive,
+                  item.tone === 'draft' && styles.statTileDraft,
+                  item.tone === 'completed' && styles.statTileCompleted,
+                ]}
+              >
+                <Text style={styles.statValue}>{item.value}</Text>
+                <Text style={styles.statLabel}>{item.label}</Text>
+              </View>
+            ))}
+          </View>
+        </AppCard>
+
         {deleteError ? <Text style={styles.errorText}>{deleteError}</Text> : null}
 
+        <View style={styles.sectionHeadingRow}>
+          <Text style={styles.sectionHeading}>Your Tournaments</Text>
+          <Text style={styles.sectionSubHeading}>
+            {tournaments.length === 0
+              ? 'No tournaments created yet'
+              : `${tournaments.length} tournament${tournaments.length === 1 ? '' : 's'}`}
+          </Text>
+        </View>
+
         {tournaments.length === 0 ? (
-          <View style={styles.emptyCard}>
-            <Text style={styles.emptyText}>No tournaments yet. Create one to get started.</Text>
-          </View>
+          <AppCard style={styles.emptyCard}>
+            <Text style={styles.emptyTitle}>No tournaments yet</Text>
+            <Text style={styles.emptyText}>
+              Start by creating your first tournament to unlock scheduling and live results.
+            </Text>
+            <AppButton
+              label="Create Your First Tournament"
+              onPress={() => router.push('/(organizer)/new-tournament')}
+            />
+          </AppCard>
         ) : (
-          tournaments.map((tournament) => (
-            <View key={tournament.id} style={styles.card}>
-              <Text style={styles.cardTitle}>{tournament.name}</Text>
-              <Text style={styles.cardMeta}>
-                Status: {tournament.status} | Slug: {tournament.slug}
-              </Text>
-
-              <View style={styles.actionsRow}>
-                <Pressable
-                  style={[styles.button, styles.buttonSecondary]}
-                  onPress={() =>
-                    router.push({
-                      pathname: '/(organizer)/[id]/manage',
-                      params: { id: tournament.id },
-                    })
-                  }
-                >
-                  <Text style={styles.buttonSecondaryText}>Manage</Text>
-                </Pressable>
-
-                <Pressable
-                  style={[styles.button, styles.buttonPrimary]}
-                  onPress={() =>
-                    router.push({
-                      pathname: '/(organizer)/[id]/results',
-                      params: { id: tournament.id },
-                    })
-                  }
-                >
-                  <Text style={styles.buttonPrimaryText}>Results</Text>
-                </Pressable>
-
-                <Pressable
-                  style={[
-                    styles.button,
-                    styles.buttonDanger,
-                    deletingId === tournament.id && styles.buttonDisabled,
-                  ]}
-                  disabled={deletingId === tournament.id}
-                  onPress={() => handleDelete(tournament)}
-                >
-                  <Text style={styles.buttonDangerText}>
-                    {deletingId === tournament.id ? 'Deleting...' : 'Delete'}
-                  </Text>
-                </Pressable>
-              </View>
-            </View>
-          ))
+          <View style={styles.tournamentList}>
+            {tournaments.map((tournament) => (
+              <TournamentCard
+                key={tournament.id}
+                tournament={tournament}
+                deleting={deletingId === tournament.id}
+                onManage={() =>
+                  router.push({
+                    pathname: '/(organizer)/[id]/manage',
+                    params: { id: tournament.id },
+                  })
+                }
+                onResults={() =>
+                  router.push({
+                    pathname: '/(organizer)/[id]/results',
+                    params: { id: tournament.id },
+                  })
+                }
+                onDelete={() => handleDelete(tournament)}
+              />
+            ))}
+          </View>
         )}
       </ScrollView>
     </SafeAreaView>
@@ -163,131 +212,177 @@ export default function OrganizerDashboardScreen() {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: '#F8FAFC',
+    backgroundColor: theme.colors.background,
+  },
+  backgroundLayer: {
+    ...StyleSheet.absoluteFillObject,
+    overflow: 'hidden',
+  },
+  glowOrb: {
+    position: 'absolute',
+    borderRadius: theme.radius.full,
+    opacity: 0.25,
+  },
+  glowOrbTop: {
+    width: 340,
+    height: 340,
+    top: -120,
+    right: -100,
+    backgroundColor: '#BAE6FD',
+  },
+  glowOrbBottom: {
+    width: 300,
+    height: 300,
+    bottom: -120,
+    left: -120,
+    backgroundColor: '#99F6E4',
   },
   centered: {
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#F8FAFC',
+    backgroundColor: theme.colors.background,
     padding: 24,
     gap: 8,
   },
   content: {
-    padding: 16,
-    gap: 12,
-    paddingBottom: 28,
+    padding: theme.spacing.lg,
+    gap: theme.spacing.md,
+    paddingBottom: 34,
+    maxWidth: 1160,
+    width: '100%',
+    alignSelf: 'center',
+  },
+  authCard: {
+    width: '100%',
+    maxWidth: 420,
+  },
+  headerCard: {
+    gap: theme.spacing.lg,
+  },
+  headerRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    gap: theme.spacing.md,
+  },
+  headerRowStacked: {
+    flexDirection: 'column',
+  },
+  headerCopy: {
+    flex: 1,
+    gap: 6,
+  },
+  eyebrow: {
+    color: theme.colors.accent,
+    fontWeight: '700',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+    fontSize: 12,
   },
   title: {
-    fontSize: 24,
+    fontSize: 30,
     fontWeight: '900',
-    color: '#0F172A',
+    color: theme.colors.text,
   },
   subtitle: {
-    color: '#475569',
+    color: theme.colors.textMuted,
     fontWeight: '600',
+    lineHeight: 22,
   },
-  loginLink: {
-    color: '#166534',
-    fontWeight: '800',
+  toolbar: {
+    flexDirection: 'row',
+    gap: 8,
+    width: '100%',
+    maxWidth: 420,
   },
-  newLink: {
-    color: '#166534',
-    fontWeight: '800',
-    backgroundColor: '#DCFCE7',
-    borderColor: '#86EFAC',
-    borderWidth: 1,
-    borderRadius: 10,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    overflow: 'hidden',
+  toolbarStack: {
+    flexDirection: 'column',
+    maxWidth: '100%',
   },
-  logoutButton: {
-    borderRadius: 10,
-    borderWidth: 1,
-    borderColor: '#FECACA',
-    backgroundColor: '#FFF1F2',
-    paddingHorizontal: 12,
-    paddingVertical: 9,
-    alignSelf: 'flex-start',
+  toolbarButton: {
+    flex: 1,
   },
   logoutText: {
-    color: '#B91C1C',
+    color: theme.colors.danger,
     fontWeight: '800',
   },
   errorText: {
-    color: '#B91C1C',
+    color: theme.colors.danger,
     fontWeight: '700',
-    backgroundColor: '#FEE2E2',
+    backgroundColor: theme.colors.dangerSoft,
     borderWidth: 1,
-    borderColor: '#FECACA',
-    borderRadius: 8,
+    borderColor: '#FDA4AF',
+    borderRadius: theme.radius.md,
     padding: 10,
   },
-  emptyCard: {
-    backgroundColor: '#FFFFFF',
-    borderColor: '#E2E8F0',
+  statsGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: theme.spacing.sm,
+  },
+  statTile: {
+    flexGrow: 1,
+    flexBasis: 150,
+    minHeight: 92,
+    borderRadius: theme.radius.lg,
     borderWidth: 1,
-    borderRadius: 12,
-    padding: 14,
+    borderColor: '#DBEAFE',
+    backgroundColor: '#F8FAFC',
+    paddingHorizontal: theme.spacing.md,
+    paddingVertical: theme.spacing.sm,
+    justifyContent: 'center',
+    gap: 4,
+  },
+  statTileActive: {
+    borderColor: '#99F6E4',
+    backgroundColor: '#ECFEFF',
+  },
+  statTileDraft: {
+    borderColor: '#BFDBFE',
+    backgroundColor: '#EFF6FF',
+  },
+  statTileCompleted: {
+    borderColor: '#BBF7D0',
+    backgroundColor: '#F0FDF4',
+  },
+  statValue: {
+    color: theme.colors.text,
+    fontWeight: '900',
+    fontSize: 28,
+  },
+  statLabel: {
+    color: theme.colors.textMuted,
+    fontWeight: '700',
+    fontSize: 13,
+  },
+  sectionHeadingRow: {
+    gap: 4,
+  },
+  sectionHeading: {
+    color: theme.colors.text,
+    fontWeight: '800',
+    fontSize: 19,
+  },
+  sectionSubHeading: {
+    color: theme.colors.textMuted,
+    fontWeight: '600',
+    fontSize: 13,
+  },
+  tournamentList: {
+    gap: theme.spacing.sm,
+  },
+  emptyCard: {
+    gap: theme.spacing.md,
+  },
+  emptyTitle: {
+    color: theme.colors.text,
+    fontWeight: '800',
+    fontSize: 20,
   },
   emptyText: {
-    color: '#64748B',
-    fontWeight: '700',
-  },
-  card: {
-    backgroundColor: '#FFFFFF',
-    borderColor: '#E2E8F0',
-    borderWidth: 1,
-    borderRadius: 12,
-    padding: 12,
-    gap: 8,
-  },
-  cardTitle: {
-    color: '#0F172A',
-    fontWeight: '900',
-    fontSize: 17,
-  },
-  cardMeta: {
-    color: '#475569',
+    color: theme.colors.textMuted,
     fontWeight: '600',
-  },
-  actionsRow: {
-    flexDirection: 'row',
-    gap: 10,
-  },
-  button: {
-    flex: 1,
-    minHeight: 42,
-    borderRadius: 10,
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingHorizontal: 12,
-  },
-  buttonDisabled: {
-    opacity: 0.5,
-  },
-  buttonPrimary: {
-    backgroundColor: '#166534',
-  },
-  buttonDanger: {
-    backgroundColor: '#B91C1C',
-  },
-  buttonSecondary: {
-    borderWidth: 1,
-    borderColor: '#CBD5E1',
-    backgroundColor: '#FFFFFF',
-  },
-  buttonPrimaryText: {
-    color: '#FFFFFF',
-    fontWeight: '800',
-  },
-  buttonDangerText: {
-    color: '#FFFFFF',
-    fontWeight: '800',
-  },
-  buttonSecondaryText: {
-    color: '#0F172A',
-    fontWeight: '800',
+    lineHeight: 21,
   },
 });

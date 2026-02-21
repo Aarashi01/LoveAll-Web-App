@@ -2,6 +2,8 @@ import {
   addDoc,
   collection,
   doc,
+  getDoc,
+  getDocs,
   increment,
   onSnapshot,
   orderBy,
@@ -9,11 +11,17 @@ import {
   serverTimestamp,
   updateDoc,
   where,
+  writeBatch,
   type Unsubscribe,
 } from 'firebase/firestore';
 
 import { db } from '@/lib/firebase';
-import { type CreateMatchInput, type MatchDocument, type MatchStatus } from '@/lib/firestore/types';
+import {
+  type CreateMatchInput,
+  type MatchDocument,
+  type MatchRound,
+  type MatchStatus,
+} from '@/lib/firestore/types';
 
 function matchesRef(tournamentId: string) {
   return collection(db, 'tournaments', tournamentId, 'matches');
@@ -80,6 +88,15 @@ export async function completeMatch(
   nextMatchId: string | null,
 ): Promise<void> {
   const matchRef = doc(db, 'tournaments', tournamentId, 'matches', matchId);
+  const currentSnapshot = await getDoc(matchRef);
+  const currentMatch = currentSnapshot.exists() ? (currentSnapshot.data() as MatchDocument) : null;
+  const winnerName =
+    currentMatch?.player1Id === winnerId
+      ? currentMatch.player1Name
+      : currentMatch?.player2Id === winnerId
+        ? currentMatch.player2Name
+        : 'TBD';
+
   await updateDoc(matchRef, {
     status: 'completed',
     winnerId,
@@ -90,11 +107,51 @@ export async function completeMatch(
   // MVP default: write winner into player1 slot of next knockout match.
   if (nextMatchId) {
     const nextRef = doc(db, 'tournaments', tournamentId, 'matches', nextMatchId);
-    await updateDoc(nextRef, {
-      player1Id: winnerId,
-      updatedAt: serverTimestamp(),
-    });
+    const nextSnapshot = await getDoc(nextRef);
+    if (!nextSnapshot.exists()) return;
+
+    const nextMatch = nextSnapshot.data() as MatchDocument;
+    const player1Open = !nextMatch.player1Id || nextMatch.player1Id === 'TBD';
+    const player2Open = !nextMatch.player2Id || nextMatch.player2Id === 'TBD';
+
+    if (player1Open || nextMatch.player1Id === winnerId) {
+      await updateDoc(nextRef, {
+        player1Id: winnerId,
+        player1Name: winnerName,
+        updatedAt: serverTimestamp(),
+      });
+      return;
+    }
+
+    if (player2Open || nextMatch.player2Id === winnerId) {
+      await updateDoc(nextRef, {
+        player2Id: winnerId,
+        player2Name: winnerName,
+        updatedAt: serverTimestamp(),
+      });
+    }
   }
+}
+
+export async function deleteAllMatches(tournamentId: string): Promise<void> {
+  const snapshot = await getDocs(matchesRef(tournamentId));
+  if (snapshot.empty) return;
+
+  const batch = writeBatch(db);
+  snapshot.docs.forEach((matchSnapshot) => batch.delete(matchSnapshot.ref));
+  await batch.commit();
+}
+
+const KNOCKOUT_ROUNDS: MatchRound[] = ['R16', 'QF', 'SF', 'F', '3rd'];
+
+export async function deleteKnockoutMatches(tournamentId: string): Promise<void> {
+  const knockoutQuery = query(matchesRef(tournamentId), where('round', 'in', KNOCKOUT_ROUNDS));
+  const snapshot = await getDocs(knockoutQuery);
+  if (snapshot.empty) return;
+
+  const batch = writeBatch(db);
+  snapshot.docs.forEach((matchSnapshot) => batch.delete(matchSnapshot.ref));
+  await batch.commit();
 }
 
 export function subscribeToMatches(
