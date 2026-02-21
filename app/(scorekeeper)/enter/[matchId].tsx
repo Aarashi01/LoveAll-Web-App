@@ -2,17 +2,19 @@ import { useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
-  Pressable,
   SafeAreaView,
   ScrollView,
   StyleSheet,
   Text,
-  TextInput,
   View,
 } from 'react-native';
 import { useLocalSearchParams } from 'expo-router';
 
+import { AppButton } from '@/components/ui/AppButton';
+import { AppCard } from '@/components/ui/AppCard';
+import { AppInput } from '@/components/ui/AppInput';
 import { ScoreInput } from '@/components/score/ScoreInput';
+import { theme, toCategoryLabel, toRoundLabel } from '@/constants/theme';
 import { useAuth } from '@/hooks/useAuth';
 import { activateScorekeeperSession } from '@/lib/scorekeeper-session';
 import { useTournament } from '@/hooks/useTournament';
@@ -236,7 +238,7 @@ export default function ScoreEntryScreen() {
     <SafeAreaView style={styles.safeArea}>
       <View style={styles.header}>
         <Text style={styles.headerTitle}>
-          {match.category} - {match.round}
+          {toCategoryLabel(match.category)} - {toRoundLabel(match.round)}
         </Text>
         <Text style={styles.headerSubTitle}>
           {typeof match.courtNumber === 'number' ? `Court ${match.courtNumber}` : 'Court TBD'}
@@ -245,18 +247,18 @@ export default function ScoreEntryScreen() {
 
       {!pinValidated ? (
         <View style={styles.pinContainer}>
-          <Text style={styles.pinTitle}>Enter Venue PIN</Text>
-          <TextInput
-            value={pinInput}
-            onChangeText={setPinInput}
-            maxLength={4}
-            keyboardType="number-pad"
-            placeholder="4-digit PIN"
-            style={styles.pinInput}
-          />
-          <Pressable style={styles.pinButton} onPress={handleValidatePin}>
-            <Text style={styles.pinButtonLabel}>Unlock Score Entry</Text>
-          </Pressable>
+          <AppCard style={styles.pinCard}>
+            <Text style={styles.pinTitle}>Enter Venue PIN</Text>
+            <AppInput
+              label="Venue PIN"
+              value={pinInput}
+              onChangeText={setPinInput}
+              maxLength={4}
+              keyboardType="number-pad"
+              placeholder="4-digit PIN"
+            />
+            <AppButton label="Unlock Score Entry" onPress={handleValidatePin} />
+          </AppCard>
         </View>
       ) : (
         <ScrollView contentContainerStyle={styles.content}>
@@ -280,20 +282,19 @@ export default function ScoreEntryScreen() {
           </View>
 
           {pendingWinnerId ? (
-            <Pressable style={styles.completeButton} onPress={handleCompleteMatch}>
-              <Text style={styles.completeButtonLabel}>End Match</Text>
-            </Pressable>
+            <AppButton label="End Match" onPress={handleCompleteMatch} />
           ) : null}
         </ScrollView>
       )}
 
-      <Pressable
+      <AppButton
+        label="Undo"
+        variant="secondary"
         style={[styles.undoFab, history.length === 0 && styles.undoFabDisabled]}
+        labelStyle={styles.undoLabel}
         disabled={history.length === 0}
         onPress={() => void handleUndo()}
-      >
-        <Text style={styles.undoLabel}>Undo</Text>
-      </Pressable>
+      />
     </SafeAreaView>
   );
 }
@@ -301,7 +302,7 @@ export default function ScoreEntryScreen() {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: '#F1F5F9',
+    backgroundColor: theme.colors.background,
   },
   centered: {
     flex: 1,
@@ -315,8 +316,10 @@ const styles = StyleSheet.create({
   },
   header: {
     paddingHorizontal: 16,
-    paddingVertical: 12,
-    backgroundColor: '#0F172A',
+    paddingVertical: 14,
+    backgroundColor: '#0B1220',
+    borderBottomWidth: 1,
+    borderBottomColor: '#1E293B',
   },
   headerTitle: {
     color: '#E2E8F0',
@@ -342,18 +345,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     gap: 12,
   },
-  completeButton: {
-    backgroundColor: '#1D4ED8',
-    minHeight: 52,
-    borderRadius: 12,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  completeButtonLabel: {
-    color: '#FFFFFF',
-    fontWeight: '800',
-    fontSize: 18,
-  },
   undoFab: {
     position: 'absolute',
     right: 18,
@@ -364,48 +355,26 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#0F172A',
+    backgroundColor: theme.colors.surface,
+    borderColor: theme.colors.border,
+    borderWidth: 1,
   },
   undoFabDisabled: {
     opacity: 0.35,
   },
   undoLabel: {
-    color: '#FFFFFF',
+    color: theme.colors.text,
     fontWeight: '800',
   },
   pinContainer: {
     margin: 16,
-    padding: 18,
-    borderRadius: 14,
-    backgroundColor: '#FFFFFF',
-    borderWidth: 1,
-    borderColor: '#CBD5E1',
+  },
+  pinCard: {
     gap: 12,
   },
   pinTitle: {
     fontSize: 20,
     fontWeight: '800',
-    color: '#0F172A',
-  },
-  pinInput: {
-    borderWidth: 1,
-    borderColor: '#94A3B8',
-    borderRadius: 10,
-    paddingHorizontal: 14,
-    paddingVertical: 12,
-    backgroundColor: '#F8FAFC',
-    fontSize: 18,
-    letterSpacing: 2,
-  },
-  pinButton: {
-    backgroundColor: '#166534',
-    borderRadius: 10,
-    minHeight: 46,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  pinButtonLabel: {
-    color: '#FFFFFF',
-    fontWeight: '800',
+    color: theme.colors.text,
   },
 });

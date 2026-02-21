@@ -1,16 +1,10 @@
 import { useMemo, useState } from 'react';
-import {
-  ActivityIndicator,
-  Alert,
-  Pressable,
-  SafeAreaView,
-  ScrollView,
-  StyleSheet,
-  Text,
-  View,
-} from 'react-native';
+import { ActivityIndicator, Alert, SafeAreaView, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useLocalSearchParams } from 'expo-router';
 
+import { AppButton } from '@/components/ui/AppButton';
+import { AppCard } from '@/components/ui/AppCard';
+import { theme, toCategoryLabel, toRoundLabel } from '@/constants/theme';
 import { useMatches } from '@/hooks/useMatches';
 import { useTournament } from '@/hooks/useTournament';
 import { emailResultsPDF, generateResultsPDF, shareResultsPDF } from '@/lib/pdf-generator';
@@ -79,54 +73,42 @@ export default function ResultsScreen() {
         <Text style={styles.title}>Results Export</Text>
         <Text style={styles.subTitle}>{tournament.name}</Text>
 
-        <View style={styles.summaryCard}>
+        <AppCard>
           <Text style={styles.summaryLabel}>Completed matches</Text>
           <Text style={styles.summaryValue}>{completedMatches.length}</Text>
-        </View>
+        </AppCard>
 
         <View style={styles.actionsRow}>
-          <Pressable
-            style={[styles.button, styles.buttonPrimary, isBusy && styles.buttonDisabled]}
+          <AppButton
+            label={activeAction === 'export' ? 'Generating...' : 'Export PDF'}
             disabled={isBusy}
             onPress={() =>
               void runWithGuard('export', async () => generateResultsPDF(tournament, matches))
             }
-          >
-            <Text style={styles.buttonPrimaryText}>
-              {activeAction === 'export' ? 'Generating...' : 'Export PDF'}
-            </Text>
-          </Pressable>
-
-          <Pressable
-            style={[styles.button, styles.buttonSecondary, isBusy && styles.buttonDisabled]}
+          />
+          <AppButton
+            variant="secondary"
+            label={activeAction === 'share' ? 'Opening...' : 'Share'}
             disabled={isBusy}
             onPress={() =>
               void runWithGuard('share', async () => shareResultsPDF(tournament, matches))
             }
-          >
-            <Text style={styles.buttonSecondaryText}>
-              {activeAction === 'share' ? 'Opening...' : 'Share'}
-            </Text>
-          </Pressable>
-
-          <Pressable
-            style={[styles.button, styles.buttonSecondary, isBusy && styles.buttonDisabled]}
+          />
+          <AppButton
+            variant="secondary"
+            label={activeAction === 'email' ? 'Opening...' : 'Email'}
             disabled={isBusy}
             onPress={() =>
               void runWithGuard('email', async () => emailResultsPDF(tournament, matches))
             }
-          >
-            <Text style={styles.buttonSecondaryText}>
-              {activeAction === 'email' ? 'Opening...' : 'Email'}
-            </Text>
-          </Pressable>
+          />
         </View>
 
         {lastPdfUri ? (
-          <View style={styles.uriCard}>
+          <AppCard style={styles.uriCard}>
             <Text style={styles.uriLabel}>Last generated PDF</Text>
             <Text style={styles.uriValue}>{lastPdfUri}</Text>
-          </View>
+          </AppCard>
         ) : null}
 
         <Text style={styles.sectionTitle}>Completed Match List</Text>
@@ -134,9 +116,9 @@ export default function ResultsScreen() {
           <Text style={styles.emptyText}>No completed matches yet.</Text>
         ) : (
           completedMatches.map((match) => (
-            <View key={match.id} style={styles.matchCard}>
+            <AppCard key={match.id}>
               <Text style={styles.matchTitle}>
-                {match.category} - {match.round}
+                {toCategoryLabel(match.category)} - {toRoundLabel(match.round)}
               </Text>
               <Text style={styles.matchBody}>
                 {match.player1Name} vs {match.player2Name}
@@ -149,7 +131,7 @@ export default function ResultsScreen() {
                     ? match.player2Name
                     : 'TBD'}
               </Text>
-            </View>
+            </AppCard>
           ))
         )}
       </ScrollView>
@@ -160,13 +142,14 @@ export default function ResultsScreen() {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: '#F8FAFC',
+    backgroundColor: theme.colors.background,
   },
   centered: {
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
     padding: 24,
+    backgroundColor: theme.colors.background,
   },
   content: {
     padding: 16,
@@ -176,68 +159,30 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 24,
     fontWeight: '900',
-    color: '#0F172A',
+    color: theme.colors.text,
   },
   subTitle: {
     fontSize: 15,
     fontWeight: '600',
-    color: '#475569',
-  },
-  summaryCard: {
-    borderRadius: 12,
-    backgroundColor: '#FFFFFF',
-    borderWidth: 1,
-    borderColor: '#E2E8F0',
-    padding: 14,
+    color: theme.colors.textMuted,
   },
   summaryLabel: {
-    color: '#475569',
+    color: theme.colors.textMuted,
     fontWeight: '700',
   },
   summaryValue: {
     marginTop: 4,
-    color: '#0F172A',
+    color: theme.colors.text,
     fontWeight: '900',
     fontSize: 30,
   },
   actionsRow: {
     gap: 10,
   },
-  button: {
-    minHeight: 48,
-    borderRadius: 10,
-    justifyContent: 'center',
-    alignItems: 'center',
-    paddingHorizontal: 14,
-  },
-  buttonPrimary: {
-    backgroundColor: '#166534',
-  },
-  buttonSecondary: {
-    backgroundColor: '#FFFFFF',
-    borderWidth: 1,
-    borderColor: '#CBD5E1',
-  },
-  buttonPrimaryText: {
-    color: '#FFFFFF',
-    fontWeight: '800',
-    fontSize: 16,
-  },
-  buttonSecondaryText: {
-    color: '#0F172A',
-    fontWeight: '800',
-    fontSize: 16,
-  },
-  buttonDisabled: {
-    opacity: 0.5,
-  },
   uriCard: {
-    borderRadius: 12,
     backgroundColor: '#EFF6FF',
     borderWidth: 1,
     borderColor: '#BFDBFE',
-    padding: 12,
-    gap: 6,
   },
   uriLabel: {
     color: '#1E3A8A',
@@ -250,26 +195,18 @@ const styles = StyleSheet.create({
   },
   sectionTitle: {
     marginTop: 4,
-    color: '#0F172A',
+    color: theme.colors.text,
     fontWeight: '900',
     fontSize: 18,
   },
   emptyText: {
-    color: '#64748B',
+    color: theme.colors.textMuted,
     fontWeight: '700',
     textAlign: 'center',
     marginTop: 20,
   },
-  matchCard: {
-    borderRadius: 12,
-    backgroundColor: '#FFFFFF',
-    borderWidth: 1,
-    borderColor: '#E2E8F0',
-    padding: 12,
-    gap: 4,
-  },
   matchTitle: {
-    color: '#0F172A',
+    color: theme.colors.text,
     fontWeight: '900',
   },
   matchBody: {
@@ -277,12 +214,13 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
   matchWinner: {
-    color: '#166534',
+    color: theme.colors.success,
     fontWeight: '800',
   },
   errorText: {
-    color: '#B91C1C',
+    color: theme.colors.danger,
     fontWeight: '700',
     textAlign: 'center',
   },
 });
+

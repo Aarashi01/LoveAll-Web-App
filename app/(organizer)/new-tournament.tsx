@@ -8,12 +8,15 @@ import {
   StyleSheet,
   Switch,
   Text,
-  TextInput,
   View,
 } from 'react-native';
 import { Link, router } from 'expo-router';
 import { type FirebaseError } from 'firebase/app';
 
+import { AppButton } from '@/components/ui/AppButton';
+import { AppCard } from '@/components/ui/AppCard';
+import { AppInput } from '@/components/ui/AppInput';
+import { theme, toCategoryLabel } from '@/constants/theme';
 import { useAuth } from '@/hooks/useAuth';
 import { createTournament } from '@/lib/firestore/tournaments';
 import { type MatchCategory } from '@/lib/firestore/types';
@@ -143,9 +146,7 @@ export default function NewTournamentScreen() {
           <Text style={styles.authBlockedText}>
             You must be logged in as an organizer to create a tournament.
           </Text>
-          <Link href="/(auth)/login" style={styles.loginLink}>
-            Go to Login
-          </Link>
+          <AppButton label="Go to Login" onPress={() => router.push('/(auth)/login')} />
         </View>
       </SafeAreaView>
     );
@@ -171,24 +172,24 @@ export default function NewTournamentScreen() {
           </View>
         ) : null}
 
-        <View style={styles.card}>
+        <AppCard>
           <Text style={styles.sectionLabel}>Tournament Details</Text>
-          <Text style={styles.fieldLabel}>Tournament Name</Text>
-          <TextInput
+          <AppInput
+            label="Tournament Name"
             value={name}
             onChangeText={setName}
             placeholder="Enter Tournament Name"
-            style={styles.input}
           />
 
           <View style={styles.switchRow}>
             <Text style={styles.fieldLabel}>Enable Public Spectator View</Text>
             <Switch value={publicViewEnabled} onValueChange={setPublicViewEnabled} />
           </View>
-        </View>
+        </AppCard>
 
-        <View style={styles.card}>
+        <AppCard>
           <Text style={styles.sectionLabel}>Match Categories</Text>
+          <Text style={styles.helperText}>Select all event types available in this tournament.</Text>
           <View style={styles.optionGrid}>
             {CATEGORY_OPTIONS.map((category) => {
               const selected = categories.includes(category);
@@ -199,17 +200,17 @@ export default function NewTournamentScreen() {
                   onPress={() => toggleCategory(category)}
                 >
                   <Text style={[styles.optionCardText, selected && styles.optionCardTextSelected]}>
-                    {category}
+                    {toCategoryLabel(category)}
                   </Text>
                 </Pressable>
               );
             })}
           </View>
-        </View>
+        </AppCard>
 
-        <View style={styles.card}>
+        <AppCard>
           <Text style={styles.sectionLabel}>Scoring Format</Text>
-          <Text style={styles.fieldLabel}>Best Of</Text>
+          <Text style={styles.fieldLabel}>Match Length</Text>
           <View style={styles.segmented}>
             {[1, 3].map((value) => (
               <Pressable
@@ -218,13 +219,13 @@ export default function NewTournamentScreen() {
                 onPress={() => setBestOf(value as 1 | 3)}
               >
                 <Text style={[styles.segmentText, bestOf === value && styles.segmentTextActive]}>
-                  Best of {value}
+                  {value === 1 ? 'Single Set' : 'Best of 3 Sets'}
                 </Text>
               </Pressable>
             ))}
           </View>
 
-          <Text style={[styles.fieldLabel, styles.fieldTopGap]}>Points Per Game</Text>
+          <Text style={[styles.fieldLabel, styles.fieldTopGap]}>Points Required to Win a Set</Text>
           <View style={styles.segmented}>
             {[11, 15, 21].map((value) => (
               <Pressable
@@ -238,24 +239,23 @@ export default function NewTournamentScreen() {
                     pointsPerGame === value && styles.segmentTextActive,
                   ]}
                 >
-                  {value} pts
+                  {value} points
                 </Text>
               </Pressable>
             ))}
           </View>
-        </View>
+        </AppCard>
 
-        <View style={styles.card}>
+        <AppCard>
           <Text style={styles.sectionLabel}>Draw Structure</Text>
-          <Text style={styles.fieldLabel}>Group Count</Text>
-          <TextInput
+          <AppInput
+            label="Number of Groups"
             value={groupCount}
             onChangeText={setGroupCount}
             keyboardType="number-pad"
-            style={styles.input}
           />
 
-          <Text style={[styles.fieldLabel, styles.fieldTopGap]}>Knockout Size</Text>
+          <Text style={[styles.fieldLabel, styles.fieldTopGap]}>Knockout Bracket Size</Text>
           <View style={styles.segmented}>
             {[4, 8, 16].map((value) => (
               <Pressable
@@ -269,38 +269,36 @@ export default function NewTournamentScreen() {
                     knockoutSize === value && styles.segmentTextActive,
                   ]}
                 >
-                  {value}
+                  {value} Players
                 </Text>
               </Pressable>
             ))}
           </View>
 
-          <Text style={[styles.fieldLabel, styles.fieldTopGap]}>Venue PIN (4 digits)</Text>
           <View style={styles.pinRow}>
-            <TextInput
+            <AppInput
+              label="Venue Access PIN (4 digits)"
               value={venuePin}
               onChangeText={setVenuePin}
               maxLength={4}
               keyboardType="number-pad"
-              style={[styles.input, styles.pinInput]}
+              containerStyle={styles.pinInput}
             />
-            <Pressable style={styles.regenerateButton} onPress={() => setVenuePin(randomPin())}>
-              <Text style={styles.regenerateButtonText}>Regenerate</Text>
-            </Pressable>
+            <AppButton
+              variant="secondary"
+              label="Regenerate"
+              onPress={() => setVenuePin(randomPin())}
+            />
           </View>
-        </View>
+        </AppCard>
       </ScrollView>
 
       <View style={styles.bottomBar}>
-        <Pressable
-          style={[styles.createButton, submitting && styles.createButtonDisabled]}
+        <AppButton
+          label={submitting ? 'Creating Tournament...' : 'Create Tournament'}
           disabled={submitting}
           onPress={() => void handleCreate()}
-        >
-          <Text style={styles.createButtonText}>
-            {submitting ? 'Creating Tournament...' : 'Create Tournament'}
-          </Text>
-        </Pressable>
+        />
       </View>
     </SafeAreaView>
   );
@@ -309,13 +307,13 @@ export default function NewTournamentScreen() {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: '#F1F4F8',
+    backgroundColor: theme.colors.background,
   },
   centered: {
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#F1F4F8',
+    backgroundColor: theme.colors.background,
   },
   content: {
     paddingHorizontal: 14,
@@ -326,24 +324,16 @@ const styles = StyleSheet.create({
   screenTitle: {
     fontSize: 30,
     fontWeight: '900',
-    color: '#0F172A',
+    color: theme.colors.text,
   },
   subtitle: {
-    color: '#64748B',
+    color: theme.colors.textMuted,
     fontWeight: '600',
     marginTop: -4,
     marginBottom: 2,
   },
-  card: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: '#E2E8F0',
-    padding: 12,
-    gap: 10,
-  },
   sectionLabel: {
-    color: '#64748B',
+    color: theme.colors.textMuted,
     fontWeight: '900',
     letterSpacing: 0.8,
     fontSize: 12,
@@ -353,16 +343,13 @@ const styles = StyleSheet.create({
     color: '#334155',
     fontWeight: '800',
   },
+  helperText: {
+    color: theme.colors.textMuted,
+    fontWeight: '600',
+    fontSize: 12,
+  },
   fieldTopGap: {
     marginTop: 4,
-  },
-  input: {
-    borderWidth: 1,
-    borderColor: '#CBD5E1',
-    borderRadius: 12,
-    backgroundColor: '#F8FAFC',
-    paddingHorizontal: 12,
-    paddingVertical: 11,
   },
   optionGrid: {
     flexDirection: 'row',
@@ -370,11 +357,11 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   optionCard: {
-    minWidth: 56,
+    minWidth: 180,
     borderWidth: 1,
-    borderColor: '#CBD5E1',
+    borderColor: theme.colors.border,
     borderRadius: 12,
-    backgroundColor: '#F8FAFC',
+    backgroundColor: theme.colors.surfaceSoft,
     paddingHorizontal: 12,
     paddingVertical: 10,
     alignItems: 'center',
@@ -384,14 +371,15 @@ const styles = StyleSheet.create({
     backgroundColor: '#EAF2FF',
   },
   optionCardText: {
-    color: '#334155',
+    color: theme.colors.text,
     fontWeight: '800',
+    textAlign: 'center',
   },
   optionCardTextSelected: {
     color: '#1D4ED8',
   },
   segmented: {
-    backgroundColor: '#E2E8F0',
+    backgroundColor: theme.colors.border,
     borderRadius: 12,
     padding: 4,
     flexDirection: 'row',
@@ -405,12 +393,12 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   segmentActive: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: theme.colors.surface,
     borderWidth: 1,
     borderColor: '#3B82F6',
   },
   segmentText: {
-    color: '#334155',
+    color: theme.colors.text,
     fontWeight: '800',
     fontSize: 13,
   },
@@ -420,24 +408,10 @@ const styles = StyleSheet.create({
   pinRow: {
     flexDirection: 'row',
     gap: 8,
-    alignItems: 'center',
+    alignItems: 'flex-end',
   },
   pinInput: {
     flex: 1,
-  },
-  regenerateButton: {
-    minHeight: 44,
-    borderRadius: 10,
-    borderWidth: 1,
-    borderColor: '#CBD5E1',
-    backgroundColor: '#FFFFFF',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingHorizontal: 12,
-  },
-  regenerateButtonText: {
-    color: '#0F172A',
-    fontWeight: '700',
   },
   switchRow: {
     marginTop: 2,
@@ -445,9 +419,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     borderWidth: 1,
-    borderColor: '#E2E8F0',
+    borderColor: theme.colors.border,
     borderRadius: 12,
-    backgroundColor: '#F8FAFC',
+    backgroundColor: theme.colors.surfaceSoft,
     paddingHorizontal: 12,
     paddingVertical: 10,
   },
@@ -456,32 +430,17 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     bottom: 0,
-    backgroundColor: '#F1F4F8',
+    backgroundColor: theme.colors.background,
     borderTopWidth: 1,
-    borderTopColor: '#E2E8F0',
+    borderTopColor: theme.colors.border,
     paddingHorizontal: 14,
     paddingTop: 10,
     paddingBottom: 14,
   },
-  createButton: {
-    minHeight: 52,
-    borderRadius: 12,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: '#2F80ED',
-  },
-  createButtonDisabled: {
-    opacity: 0.55,
-  },
-  createButtonText: {
-    color: '#FFFFFF',
-    fontWeight: '900',
-    fontSize: 17,
-  },
   errorText: {
-    color: '#B91C1C',
+    color: theme.colors.danger,
     fontWeight: '700',
-    backgroundColor: '#FEE2E2',
+    backgroundColor: theme.colors.dangerSoft,
     borderWidth: 1,
     borderColor: '#FECACA',
     borderRadius: 10,
@@ -518,19 +477,7 @@ const styles = StyleSheet.create({
   },
   authBlockedText: {
     textAlign: 'center',
-    color: '#334155',
+    color: theme.colors.text,
     fontWeight: '600',
   },
-  loginLink: {
-    color: '#166534',
-    fontWeight: '800',
-    backgroundColor: '#DCFCE7',
-    borderColor: '#86EFAC',
-    borderWidth: 1,
-    borderRadius: 10,
-    paddingHorizontal: 14,
-    paddingVertical: 10,
-    overflow: 'hidden',
-  },
 });
-

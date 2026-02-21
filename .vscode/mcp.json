@@ -1,0 +1,9 @@
+{
+  "servers": {
+    "shadcn": {
+      "type": "stdio",
+      "command": "C:\\Program Files\\nodejs\\npx.cmd",
+      "args": ["shadcn@latest", "mcp"]
+    }
+  }
+}
