@@ -49,18 +49,18 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     paddingVertical: 6,
     borderTopWidth: 1,
-    borderColor: '#E2E8F0',
+    borderColor: 'rgba(255, 255, 255, 0.1)',
   },
   tableRow: {
     flexDirection: 'row',
     paddingVertical: 4,
     borderTopWidth: 1,
-    borderColor: '#F1F5F9',
+    borderColor: 'rgba(255, 255, 255, 0.05)',
   },
   tableCell: {
     width: 30,
     textAlign: 'center',
-    color: '#334155',
+    color: '#CBD5E1',
     fontWeight: '600',
   },
   rankCol: {

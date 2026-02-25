@@ -4,7 +4,6 @@ import {
   doc,
   getDoc,
   getDocs,
-  increment,
   onSnapshot,
   orderBy,
   query,
@@ -73,10 +72,21 @@ export async function updateScore(
   delta: 1 | -1,
 ): Promise<void> {
   const matchRef = doc(db, 'tournaments', tournamentId, 'matches', matchId);
-  const field = `scores.${gameIndex}.${player}Score`;
+  const snapshot = await getDoc(matchRef);
+  if (!snapshot.exists()) return;
+
+  const match = snapshot.data() as MatchDocument;
+  const updatedScores = [...match.scores];
+  if (!updatedScores[gameIndex]) return;
+
+  const scoreField = player === 'p1' ? 'p1Score' : 'p2Score';
+  updatedScores[gameIndex] = {
+    ...updatedScores[gameIndex],
+    [scoreField]: Math.max(0, updatedScores[gameIndex][scoreField] + delta),
+  };
 
   await updateDoc(matchRef, {
-    [field]: increment(delta),
+    scores: updatedScores,
     updatedAt: serverTimestamp(),
   });
 }
@@ -133,13 +143,21 @@ export async function completeMatch(
   }
 }
 
+const BATCH_LIMIT = 500;
+
+async function batchDeleteDocs(docs: Array<{ ref: import('firebase/firestore').DocumentReference }>): Promise<void> {
+  for (let i = 0; i < docs.length; i += BATCH_LIMIT) {
+    const chunk = docs.slice(i, i + BATCH_LIMIT);
+    const batch = writeBatch(db);
+    chunk.forEach((d) => batch.delete(d.ref));
+    await batch.commit();
+  }
+}
+
 export async function deleteAllMatches(tournamentId: string): Promise<void> {
   const snapshot = await getDocs(matchesRef(tournamentId));
   if (snapshot.empty) return;
-
-  const batch = writeBatch(db);
-  snapshot.docs.forEach((matchSnapshot) => batch.delete(matchSnapshot.ref));
-  await batch.commit();
+  await batchDeleteDocs(snapshot.docs);
 }
 
 const KNOCKOUT_ROUNDS: MatchRound[] = ['R16', 'QF', 'SF', 'F', '3rd'];
@@ -148,10 +166,7 @@ export async function deleteKnockoutMatches(tournamentId: string): Promise<void>
   const knockoutQuery = query(matchesRef(tournamentId), where('round', 'in', KNOCKOUT_ROUNDS));
   const snapshot = await getDocs(knockoutQuery);
   if (snapshot.empty) return;
-
-  const batch = writeBatch(db);
-  snapshot.docs.forEach((matchSnapshot) => batch.delete(matchSnapshot.ref));
-  await batch.commit();
+  await batchDeleteDocs(snapshot.docs);
 }
 
 export function subscribeToMatches(

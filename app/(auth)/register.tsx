@@ -1,5 +1,7 @@
-import { useEffect, useState } from 'react';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { Link, router } from 'expo-router';
 import type { ComponentProps } from 'react';
+import { useEffect, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -11,8 +13,6 @@ import {
   View,
   useWindowDimensions,
 } from 'react-native';
-import { Link, router } from 'expo-router';
-import { MaterialCommunityIcons } from '@expo/vector-icons';
 
 import { AppButton } from '@/components/ui/AppButton';
 import { AppCard } from '@/components/ui/AppCard';
@@ -24,19 +24,19 @@ const registerFeatures: Array<{
   icon: ComponentProps<typeof MaterialCommunityIcons>['name'];
   title: string;
 }> = [
-  {
-    icon: 'account-group-outline',
-    title: 'Manage players and brackets from one dashboard',
-  },
-  {
-    icon: 'scoreboard-outline',
-    title: 'Track match updates and share public results',
-  },
-  {
-    icon: 'shield-check-outline',
-    title: 'Secure organizer access for every event',
-  },
-];
+    {
+      icon: 'account-group-outline',
+      title: 'Manage players and brackets from one dashboard',
+    },
+    {
+      icon: 'scoreboard-outline',
+      title: 'Track match updates and share public results',
+    },
+    {
+      icon: 'shield-check-outline',
+      title: 'Secure organizer access for every event',
+    },
+  ];
 
 export default function RegisterScreen() {
   const { user, loading, error, register } = useAuth();
@@ -169,18 +169,22 @@ const styles = StyleSheet.create({
     opacity: 0.32,
   },
   glowOrbTop: {
-    width: 360,
-    height: 360,
-    right: -110,
-    top: -120,
-    backgroundColor: '#7DD3FC',
+    width: 600,
+    height: 600,
+    right: -200,
+    top: -200,
+    backgroundColor: '#3B82F6', // Vibrant blue
+    filter: 'blur(120px)',
+    opacity: 0.15,
   },
   glowOrbBottom: {
-    width: 300,
-    height: 300,
-    left: -130,
-    bottom: -100,
-    backgroundColor: '#99F6E4',
+    width: 500,
+    height: 500,
+    left: -150,
+    bottom: -150,
+    backgroundColor: '#10B981', // Emerald green
+    filter: 'blur(100px)',
+    opacity: 0.15,
   },
   scrollContent: {
     flexGrow: 1,
@@ -206,65 +210,71 @@ const styles = StyleSheet.create({
   },
   heroPane: {
     flex: 1,
-    backgroundColor: '#082F49',
+    backgroundColor: 'transparent',
     borderRadius: theme.radius.xl,
     padding: theme.spacing.xl,
-    gap: theme.spacing.md,
-    borderWidth: 1,
-    borderColor: '#155E75',
+    gap: theme.spacing.xl,
+    justifyContent: 'center',
   },
   badge: {
     alignSelf: 'flex-start',
-    paddingHorizontal: 10,
+    paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: theme.radius.full,
-    backgroundColor: '#0C4A6E',
-    color: '#E0F2FE',
-    fontWeight: '700',
-    fontSize: 12,
+    backgroundColor: 'rgba(59, 130, 246, 0.15)', // Accent tint
+    color: '#60A5FA', // Bright blue
+    fontWeight: '800',
+    fontSize: 11,
     textTransform: 'uppercase',
-    letterSpacing: 0.4,
+    letterSpacing: 1.5,
+    borderWidth: 1,
+    borderColor: 'rgba(59, 130, 246, 0.3)',
   },
   heroTitle: {
-    color: '#F0F9FF',
-    fontSize: 32,
+    color: '#FFFFFF',
+    fontSize: 42,
     fontWeight: '900',
-    lineHeight: 40,
+    lineHeight: 52,
+    letterSpacing: -1,
   },
   heroSubtitle: {
-    color: '#CFFAFE',
-    fontSize: 15,
-    lineHeight: 22,
+    color: '#94A3B8',
+    fontSize: 18,
+    lineHeight: 28,
+    fontWeight: '400',
   },
   heroImage: {
     width: '100%',
-    height: 180,
-    borderRadius: theme.radius.lg,
+    height: 200,
+    borderRadius: theme.radius.xl,
     borderWidth: 1,
-    borderColor: '#0E7490',
-    backgroundColor: '#0C4A6E',
+    borderColor: 'rgba(255, 255, 255, 0.1)',
+    backgroundColor: '#0F172A',
+    opacity: 0.8,
   },
   featureList: {
-    gap: theme.spacing.sm,
+    gap: theme.spacing.md,
+    marginTop: 10,
   },
   featureRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 10,
+    gap: 16,
   },
   featureIconWrap: {
-    width: 28,
-    height: 28,
-    borderRadius: theme.radius.full,
+    width: 36,
+    height: 36,
+    borderRadius: 10,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#0B3A58',
+    backgroundColor: 'rgba(16, 185, 129, 0.15)', // Neon green tint
     borderWidth: 1,
-    borderColor: '#0E7490',
+    borderColor: 'rgba(16, 185, 129, 0.3)',
   },
   featureText: {
-    color: '#E0F2FE',
-    fontWeight: '600',
+    color: '#E2E8F0',
+    fontWeight: '500',
+    fontSize: 15,
     flexShrink: 1,
   },
   formCard: {
@@ -273,7 +283,9 @@ const styles = StyleSheet.create({
     maxWidth: 460,
     alignSelf: 'center',
     width: '100%',
-    gap: theme.spacing.md,
+    gap: theme.spacing.xl,
+    paddingHorizontal: 32,
+    paddingVertical: 40,
   },
   title: {
     fontSize: 30,

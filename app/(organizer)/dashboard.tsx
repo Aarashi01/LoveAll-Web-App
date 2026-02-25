@@ -1,3 +1,4 @@
+import { router } from 'expo-router';
 import { useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
@@ -10,11 +11,10 @@ import {
   View,
   useWindowDimensions,
 } from 'react-native';
-import { router } from 'expo-router';
 
+import { TournamentCard } from '@/components/tournament/TournamentCard';
 import { AppButton } from '@/components/ui/AppButton';
 import { AppCard } from '@/components/ui/AppCard';
-import { TournamentCard } from '@/components/tournament/TournamentCard';
 import { theme } from '@/constants/theme';
 import { useAuth } from '@/hooks/useAuth';
 import { deleteTournament, subscribeToOrganizerTournaments } from '@/lib/firestore/tournaments';
@@ -221,21 +221,24 @@ const styles = StyleSheet.create({
   glowOrb: {
     position: 'absolute',
     borderRadius: theme.radius.full,
-    opacity: 0.25,
+    opacity: 0.15,
+    ...(typeof window !== 'undefined' && {
+      filter: 'blur(100px)',
+    }),
   },
   glowOrbTop: {
-    width: 340,
-    height: 340,
-    top: -120,
-    right: -100,
-    backgroundColor: '#BAE6FD',
+    width: 600,
+    height: 600,
+    top: -200,
+    right: -200,
+    backgroundColor: '#3B82F6', // Deep vibrant blue
   },
   glowOrbBottom: {
-    width: 300,
-    height: 300,
-    bottom: -120,
-    left: -120,
-    backgroundColor: '#99F6E4',
+    width: 500,
+    height: 500,
+    bottom: -150,
+    left: -150,
+    backgroundColor: '#10B981', // Neon emerald
   },
   centered: {
     flex: 1,
@@ -319,32 +322,40 @@ const styles = StyleSheet.create({
   statsGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: theme.spacing.sm,
+    gap: theme.spacing.md,
   },
   statTile: {
     flexGrow: 1,
     flexBasis: 150,
-    minHeight: 92,
-    borderRadius: theme.radius.lg,
+    minHeight: 100,
+    borderRadius: theme.radius.xl,
     borderWidth: 1,
-    borderColor: '#DBEAFE',
-    backgroundColor: '#F8FAFC',
-    paddingHorizontal: theme.spacing.md,
-    paddingVertical: theme.spacing.sm,
+    borderColor: 'rgba(255, 255, 255, 0.1)',
+    backgroundColor: 'rgba(30, 41, 59, 0.5)', // Slate 800 with opacity
+    paddingHorizontal: theme.spacing.lg,
+    paddingVertical: theme.spacing.md,
     justifyContent: 'center',
-    gap: 4,
+    gap: 6,
+    ...(typeof window !== 'undefined' && {
+      backdropFilter: 'blur(12px)',
+      boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)',
+      transition: 'transform 0.2s ease',
+    }),
   },
   statTileActive: {
-    borderColor: '#99F6E4',
-    backgroundColor: '#ECFEFF',
+    borderColor: 'rgba(16, 185, 129, 0.3)', // Emerald border
+    backgroundColor: 'rgba(16, 185, 129, 0.1)',
+    ...(typeof window !== 'undefined' && {
+      boxShadow: '0 0 15px rgba(16, 185, 129, 0.2)',
+    }),
   },
   statTileDraft: {
-    borderColor: '#BFDBFE',
-    backgroundColor: '#EFF6FF',
+    borderColor: 'rgba(59, 130, 246, 0.3)', // Blue border
+    backgroundColor: 'rgba(59, 130, 246, 0.1)',
   },
   statTileCompleted: {
-    borderColor: '#BBF7D0',
-    backgroundColor: '#F0FDF4',
+    borderColor: 'rgba(148, 163, 184, 0.3)', // Slate border
+    backgroundColor: 'rgba(15, 23, 42, 0.6)',
   },
   statValue: {
     color: theme.colors.text,

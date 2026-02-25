@@ -54,9 +54,9 @@ export function TournamentCard({
           onPress={onResults ?? (() => undefined)}
         />
         <AppButton
-          variant="danger"
+          variant="secondary"
           label={deleting ? 'Deleting...' : 'Delete'}
-          style={styles.action}
+          style={[styles.action, styles.actionDanger]}
           disabled={deleting}
           onPress={onDelete ?? (() => undefined)}
         />
@@ -92,26 +92,29 @@ const styles = StyleSheet.create({
   statusChip: {
     alignSelf: 'flex-start',
     borderWidth: 1,
-    borderColor: '#BFDBFE',
-    backgroundColor: '#EFF6FF',
+    borderColor: 'rgba(59, 130, 246, 0.3)', // Default Blue
+    backgroundColor: 'rgba(59, 130, 246, 0.15)',
     borderRadius: theme.radius.full,
-    paddingHorizontal: 10,
+    paddingHorizontal: 12,
     paddingVertical: 6,
+    ...(typeof window !== 'undefined' && {
+      backdropFilter: 'blur(8px)',
+    }),
   },
   statusChipActive: {
-    borderColor: '#99F6E4',
-    backgroundColor: '#ECFEFF',
+    borderColor: 'rgba(16, 185, 129, 0.4)', // Neon Green
+    backgroundColor: 'rgba(16, 185, 129, 0.15)',
   },
   statusChipCompleted: {
-    borderColor: '#BBF7D0',
-    backgroundColor: '#F0FDF4',
+    borderColor: 'rgba(148, 163, 184, 0.4)', // Slate
+    backgroundColor: 'rgba(148, 163, 184, 0.15)',
   },
   statusText: {
-    color: '#0F172A',
+    color: '#E2E8F0', // Slate 200
     fontWeight: '800',
-    fontSize: 12,
+    fontSize: 11,
     textTransform: 'uppercase',
-    letterSpacing: 0.4,
+    letterSpacing: 0.8,
   },
   actionsRow: {
     flexDirection: 'row',
@@ -121,5 +124,9 @@ const styles = StyleSheet.create({
   action: {
     minWidth: 116,
     flexGrow: 1,
+  },
+  actionDanger: {
+    borderColor: 'rgba(239, 68, 68, 0.3)',
+    backgroundColor: 'rgba(239, 68, 68, 0.05)',
   },
 });
