@@ -149,13 +149,14 @@ const styles = StyleSheet.create({
     letterSpacing: 1,
   },
   score: {
-    fontSize: 110,
+    fontSize: 100,
     lineHeight: 110,
     fontWeight: '900',
     color: '#F8FAFC',
     textShadowColor: 'rgba(59, 130, 246, 0.5)',
     textShadowOffset: { width: 0, height: 0 },
     textShadowRadius: 20,
+    marginTop: 4,
   },
   controlsRow: {
     flexDirection: 'row',

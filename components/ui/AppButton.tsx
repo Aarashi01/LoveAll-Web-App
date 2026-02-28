@@ -129,7 +129,7 @@ const styles = StyleSheet.create({
     ...(typeof window !== 'undefined' && {
       cursor: 'not-allowed',
       transform: 'none',
-    }),
+    } as any),
   },
   label: {
     color: '#FFFFFF',

@@ -139,8 +139,37 @@ export default function ScoreEntryScreen() {
 
     if (nextP1 < 0 || nextP2 < 0) return;
 
-    await updateScore(tournamentId, match.id, activeGameIndex, player, delta);
-    setHistory((prev) => [...prev.slice(-4), { gameIndex: activeGameIndex, player, delta }]);
+    // Handle initial serve or keep current server if undefined
+    let currentServer = activeGame.currentServer;
+    if (!currentServer && delta === 1) {
+      currentServer = player;
+    }
+
+    // Determine if service over happened
+    let nextServer = currentServer;
+    if (delta === 1 && currentServer && currentServer !== player) {
+      nextServer = player;
+    }
+
+    // Determine if sides should be swapped
+    let sidesSwapped = activeGame.sidesSwapped ?? false;
+    const isFinalGame = activeGameIndex === tournament.scoringRules.bestOf - 1;
+    const swapAt = tournament.scoringRules.pointsPerGame === 21 ? 11 : Math.ceil(tournament.scoringRules.pointsPerGame / 2);
+
+    if (isFinalGame && !sidesSwapped && (nextP1 === swapAt || nextP2 === swapAt)) {
+      sidesSwapped = true;
+    }
+
+    await updateScore(tournamentId, match.id, activeGameIndex, {
+      p1Score: nextP1,
+      p2Score: nextP2,
+      currentServer: nextServer,
+      sidesSwapped,
+    });
+    setHistory((prev) => [
+      ...prev.slice(-4),
+      { gameIndex: activeGameIndex, player, delta },
+    ]);
 
     if (delta === 1) {
       setActiveServer(player);
@@ -156,6 +185,8 @@ export default function ScoreEntryScreen() {
       ...updatedScores[activeGameIndex],
       p1Score: nextP1,
       p2Score: nextP2,
+      currentServer: nextServer,
+      sidesSwapped,
       winner,
     };
 
@@ -196,11 +227,12 @@ export default function ScoreEntryScreen() {
 
     // Apply the reversed score to the targeted game
     const targetGame = updatedScores[last.gameIndex];
-    const scoreField = last.player === 'p1' ? 'p1Score' : 'p2Score';
+    if (!targetGame) return;
 
     updatedScores[last.gameIndex] = {
       ...targetGame,
-      [scoreField]: Math.max(0, targetGame[scoreField] + reverseDelta),
+      p1Score: last.player === 'p1' ? Math.max(0, targetGame.p1Score + reverseDelta) : targetGame.p1Score,
+      p2Score: last.player === 'p2' ? Math.max(0, targetGame.p2Score + reverseDelta) : targetGame.p2Score,
       winner: null, // Always clear the winner flag if we are undoing a point
       endedAt: null,
     };
@@ -315,19 +347,19 @@ export default function ScoreEntryScreen() {
             <ScoreInput
               label={match.player1Name}
               score={activeGame.p1Score}
+              isServing={activeServer === 'p1' || activeGame.currentServer === 'p1'}
               onTapCard={() => void handleScoreChange('p1', 1)}
               onIncrease={() => void handleScoreChange('p1', 1)}
               disabled={!!pendingWinnerId || activeGame.winner !== null}
-              isServing={activeServer === 'p1'}
               onSetServer={() => setActiveServer('p1')}
             />
             <ScoreInput
               label={match.player2Name}
               score={activeGame.p2Score}
+              isServing={activeServer === 'p2' || activeGame.currentServer === 'p2'}
               onTapCard={() => void handleScoreChange('p2', 1)}
               onIncrease={() => void handleScoreChange('p2', 1)}
               disabled={!!pendingWinnerId || activeGame.winner !== null}
-              isServing={activeServer === 'p2'}
               onSetServer={() => setActiveServer('p2')}
             />
           </View>
