@@ -69,6 +69,8 @@ export interface CreatePlayerInput {
   seeded?: boolean;
 }
 
+export type ServiceCourt = 'right' | 'left';
+
 export interface ScoreGame {
   gameNumber: number;
   p1Score: number;
@@ -90,6 +92,8 @@ export interface MatchDocument {
   player2Id: string;
   player1Name: string;
   player2Name: string;
+  partner1Name?: string | null;
+  partner2Name?: string | null;
   scores: ScoreGame[];
   winnerId: string | null;
   scorekeeperId: string | null;

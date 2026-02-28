@@ -78,6 +78,80 @@ export default function LoginScreen() {
     );
   }
 
+  // On mobile, show form first; on desktop, hero left + form right
+  const formSection = (
+    <AppCard style={styles.formCard}>
+      {!isWide && (
+        <View style={styles.mobileBranding}>
+          <Text style={styles.mobileAppName}>🏸 LoveAll</Text>
+          <Text style={styles.mobileTagline}>Tournament scoring made simple</Text>
+        </View>
+      )}
+      <Text style={styles.title}>Welcome back</Text>
+      <Text style={styles.subtitle}>Sign in to access your tournament workspace.</Text>
+      <AppInput
+        label="Email address"
+        autoCapitalize="none"
+        keyboardType="email-address"
+        value={email}
+        onChangeText={setEmail}
+        placeholder="you@example.com"
+      />
+      <AppInput
+        label="Password"
+        secureTextEntry
+        value={password}
+        onChangeText={setPassword}
+        placeholder="Enter your password"
+      />
+      {error || formError ? <Text style={styles.error}>{error || formError}</Text> : null}
+      <AppButton
+        label={submitting ? 'Signing In...' : 'Sign In'}
+        disabled={submitting}
+        onPress={() => void handleLogin()}
+        style={styles.submitButton}
+      />
+      <Link href="/(auth)/register" style={styles.link}>
+        Need an account? Create one
+      </Link>
+    </AppCard>
+  );
+
+  const heroSection = (
+    <View style={styles.heroPane}>
+      {isWide && <Text style={styles.badge}>LoveAll Organizer</Text>}
+      {isWide && (
+        <Text style={styles.heroTitle}>Run every tournament with less chaos.</Text>
+      )}
+      {isWide && (
+        <Text style={styles.heroSubtitle}>
+          Keep brackets, results, and match flow in one clean workspace built for fast decisions.
+        </Text>
+      )}
+      {isWide && (
+        <Image
+          source={require('../../assets/images/splash-icon.png')}
+          style={styles.heroImage}
+          resizeMode="cover"
+        />
+      )}
+      <View style={styles.featureList}>
+        {loginFeatures.map((item) => (
+          <View key={item.title} style={styles.featureRow}>
+            <View style={styles.featureIconWrap}>
+              <MaterialCommunityIcons
+                name={item.icon}
+                size={16}
+                color={theme.colors.accent}
+              />
+            </View>
+            <Text style={styles.featureText}>{item.title}</Text>
+          </View>
+        ))}
+      </View>
+    </View>
+  );
+
   return (
     <SafeAreaView style={styles.safeArea}>
       <View pointerEvents="none" style={styles.backgroundLayer}>
@@ -86,62 +160,17 @@ export default function LoginScreen() {
       </View>
       <ScrollView contentContainerStyle={styles.scrollContent}>
         <View style={[styles.shell, isWide && styles.shellWide]}>
-          <View style={styles.heroPane}>
-            <Text style={styles.badge}>LoveAll Organizer</Text>
-            <Text style={styles.heroTitle}>Run every tournament with less chaos.</Text>
-            <Text style={styles.heroSubtitle}>
-              Keep brackets, results, and match flow in one clean workspace built for fast decisions.
-            </Text>
-            <Image
-              source={require('../../assets/images/splash-icon.png')}
-              style={styles.heroImage}
-              resizeMode="cover"
-            />
-            <View style={styles.featureList}>
-              {loginFeatures.map((item) => (
-                <View key={item.title} style={styles.featureRow}>
-                  <View style={styles.featureIconWrap}>
-                    <MaterialCommunityIcons
-                      name={item.icon}
-                      size={16}
-                      color={theme.colors.accent}
-                    />
-                  </View>
-                  <Text style={styles.featureText}>{item.title}</Text>
-                </View>
-              ))}
-            </View>
-          </View>
-
-          <AppCard style={styles.formCard}>
-            <Text style={styles.title}>Welcome back</Text>
-            <Text style={styles.subtitle}>Sign in to access your tournament workspace.</Text>
-            <AppInput
-              label="Email address"
-              autoCapitalize="none"
-              keyboardType="email-address"
-              value={email}
-              onChangeText={setEmail}
-              placeholder="you@example.com"
-            />
-            <AppInput
-              label="Password"
-              secureTextEntry
-              value={password}
-              onChangeText={setPassword}
-              placeholder="Enter your password"
-            />
-            {error || formError ? <Text style={styles.error}>{error || formError}</Text> : null}
-            <AppButton
-              label={submitting ? 'Signing In...' : 'Sign In'}
-              disabled={submitting}
-              onPress={() => void handleLogin()}
-              style={styles.submitButton}
-            />
-            <Link href="/(auth)/register" style={styles.link}>
-              Need an account? Create one
-            </Link>
-          </AppCard>
+          {isWide ? (
+            <>
+              {heroSection}
+              {formSection}
+            </>
+          ) : (
+            <>
+              {formSection}
+              {heroSection}
+            </>
+          )}
         </View>
       </ScrollView>
     </SafeAreaView>
@@ -156,18 +185,25 @@ const styles = StyleSheet.create({
   backgroundLayer: {
     ...StyleSheet.absoluteFillObject,
     overflow: 'hidden',
+    zIndex: 0,
+    ...(typeof window !== 'undefined' && {
+      pointerEvents: 'none',
+    }),
   },
   glowOrb: {
     position: 'absolute',
     borderRadius: theme.radius.full,
     opacity: 0.35,
+    ...(typeof window !== 'undefined' && {
+      pointerEvents: 'none',
+    }),
   },
   glowOrbTop: {
     width: 600,
     height: 600,
     right: -200,
     top: -200,
-    backgroundColor: '#3B82F6', // Vibrant blue
+    backgroundColor: '#3B82F6',
     filter: 'blur(120px)',
     opacity: 0.15,
   },
@@ -176,13 +212,12 @@ const styles = StyleSheet.create({
     height: 500,
     left: -150,
     bottom: -150,
-    backgroundColor: '#10B981', // Emerald green
+    backgroundColor: '#10B981',
     filter: 'blur(100px)',
     opacity: 0.15,
   },
   scrollContent: {
     flexGrow: 1,
-    justifyContent: 'center',
     paddingHorizontal: theme.spacing.lg,
     paddingVertical: theme.spacing.xl,
   },
@@ -203,11 +238,10 @@ const styles = StyleSheet.create({
     alignItems: 'stretch',
   },
   heroPane: {
-    flex: 1,
     backgroundColor: 'transparent',
     borderRadius: theme.radius.xl,
-    padding: theme.spacing.xl,
-    gap: theme.spacing.xl,
+    padding: theme.spacing.lg,
+    gap: theme.spacing.lg,
     justifyContent: 'center',
   },
   badge: {
@@ -271,15 +305,31 @@ const styles = StyleSheet.create({
     fontSize: 15,
     flexShrink: 1,
   },
+  mobileBranding: {
+    alignItems: 'center',
+    marginBottom: 8,
+    gap: 4,
+  },
+  mobileAppName: {
+    color: '#F8FAFC',
+    fontSize: 22,
+    fontWeight: '900',
+    letterSpacing: 1,
+  },
+  mobileTagline: {
+    color: '#64748B',
+    fontSize: 13,
+    fontWeight: '600',
+  },
   formCard: {
-    flex: 1,
     minWidth: 320,
+    zIndex: 1,
     maxWidth: 460,
     alignSelf: 'center',
     width: '100%',
-    gap: theme.spacing.xl,
-    paddingHorizontal: 32,
-    paddingVertical: 40,
+    gap: theme.spacing.lg,
+    paddingHorizontal: 24,
+    paddingVertical: 28,
   },
   title: {
     fontSize: 30,

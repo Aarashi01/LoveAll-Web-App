@@ -21,7 +21,7 @@ import { deleteTournament, subscribeToOrganizerTournaments } from '@/lib/firesto
 import { type TournamentDocument } from '@/lib/firestore/types';
 
 export default function OrganizerDashboardScreen() {
-  const { user, loading: authLoading, logout } = useAuth();
+  const { user, loading: authLoading } = useAuth();
   const { width } = useWindowDimensions();
   const isCompact = width < 760;
   const organizerUser = user && !user.isAnonymous ? user : null;
@@ -126,13 +126,6 @@ export default function OrganizerDashboardScreen() {
               </Text>
             </View>
             <View style={[styles.toolbar, isCompact && styles.toolbarStack]}>
-              <AppButton
-                variant="secondary"
-                label="Log Out"
-                onPress={() => void logout()}
-                style={styles.toolbarButton}
-                labelStyle={styles.logoutText}
-              />
               <AppButton
                 label="+ Create Tournament"
                 onPress={() => router.push('/(organizer)/new-tournament')}
