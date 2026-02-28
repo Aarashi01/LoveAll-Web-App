@@ -14,7 +14,6 @@ const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 type ScoreInputProps = {
   label: string;
   score: number;
-  isServing?: boolean;
   onTapCard: () => void;
   onIncrease: () => void;
   disabled?: boolean;
