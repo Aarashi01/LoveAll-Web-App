@@ -251,7 +251,33 @@ export default function ScoreEntryScreen() {
       setMatchStartTime(Date.now());
     }
 
-    await updateScore(tournamentId, match.id, activeGameIndex, player, delta);
+    // Handle initial serve or keep current server if undefined
+    let currentServer = activeGame.currentServer;
+    if (!currentServer && delta === 1) {
+      currentServer = player;
+    }
+
+    // Determine if service over happened
+    let nextServer = currentServer;
+    if (delta === 1 && currentServer && currentServer !== player) {
+      nextServer = player;
+    }
+
+    // Determine if sides should be swapped
+    let sidesSwapped = activeGame.sidesSwapped ?? false;
+    const isFinalGame = activeGameIndex === tournament.scoringRules.bestOf - 1;
+    const swapAt = tournament.scoringRules.pointsPerGame === 21 ? 11 : Math.ceil(tournament.scoringRules.pointsPerGame / 2);
+
+    if (isFinalGame && !sidesSwapped && (nextP1 === swapAt || nextP2 === swapAt)) {
+      sidesSwapped = true;
+    }
+
+    await updateScore(tournamentId, match.id, activeGameIndex, {
+      p1Score: nextP1,
+      p2Score: nextP2,
+      currentServer: nextServer,
+      sidesSwapped,
+    });
     setHistory((prev) => [...prev.slice(-4), { gameIndex: activeGameIndex, player, delta }]);
 
     if (delta === 1) {
@@ -327,7 +353,8 @@ export default function ScoreEntryScreen() {
 
     updatedScores[last.gameIndex] = {
       ...targetGame,
-      [scoreField]: Math.max(0, targetGame[scoreField] + reverseDelta),
+      p1Score: last.player === 'p1' ? Math.max(0, targetGame.p1Score + reverseDelta) : targetGame.p1Score,
+      p2Score: last.player === 'p2' ? Math.max(0, targetGame.p2Score + reverseDelta) : targetGame.p2Score,
       winner: null,
       endedAt: null,
     };
