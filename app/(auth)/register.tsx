@@ -43,6 +43,7 @@ export default function RegisterScreen() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [formError, setFormError] = useState<string | null>(null);
+  const [fieldErrors, setFieldErrors] = useState<{ name?: string; email?: string; password?: string }>({});
   const [submitting, setSubmitting] = useState(false);
   const { width } = useWindowDimensions();
   const isWide = width >= 980;
@@ -55,10 +56,15 @@ export default function RegisterScreen() {
 
   const handleRegister = async () => {
     setFormError(null);
-    if (!name.trim() || !email.trim() || !password.trim()) {
-      setFormError('Please enter name, email, and password.');
+    const nextFieldErrors: { name?: string; email?: string; password?: string } = {};
+    if (!name.trim()) nextFieldErrors.name = 'Name is required.';
+    if (!email.trim()) nextFieldErrors.email = 'Email is required.';
+    if (!password.trim()) nextFieldErrors.password = 'Password is required.';
+    if (Object.keys(nextFieldErrors).length > 0) {
+      setFieldErrors(nextFieldErrors);
       return;
     }
+    setFieldErrors({});
 
     try {
       setSubmitting(true);
@@ -120,25 +126,37 @@ export default function RegisterScreen() {
             <AppInput
               label="Full name"
               value={name}
-              onChangeText={setName}
+              onChangeText={(text) => {
+                setName(text);
+                if (fieldErrors.name) setFieldErrors((prev) => ({ ...prev, name: undefined }));
+              }}
               placeholder="Enter your name"
+              errorText={fieldErrors.name}
             />
             <AppInput
               label="Email address"
               autoCapitalize="none"
               keyboardType="email-address"
               value={email}
-              onChangeText={setEmail}
+              onChangeText={(text) => {
+                setEmail(text);
+                if (fieldErrors.email) setFieldErrors((prev) => ({ ...prev, email: undefined }));
+              }}
               placeholder="you@example.com"
+              errorText={fieldErrors.email}
             />
             <AppInput
               label="Password"
               secureTextEntry
               value={password}
-              onChangeText={setPassword}
+              onChangeText={(text) => {
+                setPassword(text);
+                if (fieldErrors.password) setFieldErrors((prev) => ({ ...prev, password: undefined }));
+              }}
               placeholder="Create a password"
+              errorText={fieldErrors.password}
             />
-            {error || formError ? <Text style={styles.error}>{error || formError}</Text> : null}
+            {error ? <Text style={styles.error}>{error}</Text> : null}
             <AppButton
               label={submitting ? 'Creating...' : 'Create Account'}
               disabled={submitting}

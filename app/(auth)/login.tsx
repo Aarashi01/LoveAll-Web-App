@@ -42,6 +42,7 @@ export default function LoginScreen() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [formError, setFormError] = useState<string | null>(null);
+  const [fieldErrors, setFieldErrors] = useState<{ email?: string; password?: string }>({});
   const [submitting, setSubmitting] = useState(false);
   const { width } = useWindowDimensions();
   const isWide = width >= 980;
@@ -54,10 +55,14 @@ export default function LoginScreen() {
 
   const handleLogin = async () => {
     setFormError(null);
-    if (!email.trim() || !password.trim()) {
-      setFormError('Please enter both email and password.');
+    const nextFieldErrors: { email?: string; password?: string } = {};
+    if (!email.trim()) nextFieldErrors.email = 'Email is required.';
+    if (!password.trim()) nextFieldErrors.password = 'Password is required.';
+    if (Object.keys(nextFieldErrors).length > 0) {
+      setFieldErrors(nextFieldErrors);
       return;
     }
+    setFieldErrors({});
 
     try {
       setSubmitting(true);
@@ -94,17 +99,25 @@ export default function LoginScreen() {
         autoCapitalize="none"
         keyboardType="email-address"
         value={email}
-        onChangeText={setEmail}
+        onChangeText={(text) => {
+          setEmail(text);
+          if (fieldErrors.email) setFieldErrors((prev) => ({ ...prev, email: undefined }));
+        }}
         placeholder="you@example.com"
+        errorText={fieldErrors.email}
       />
       <AppInput
         label="Password"
         secureTextEntry
         value={password}
-        onChangeText={setPassword}
+        onChangeText={(text) => {
+          setPassword(text);
+          if (fieldErrors.password) setFieldErrors((prev) => ({ ...prev, password: undefined }));
+        }}
         placeholder="Enter your password"
+        errorText={fieldErrors.password}
       />
-      {error || formError ? <Text style={styles.error}>{error || formError}</Text> : null}
+      {error ? <Text style={styles.error}>{error}</Text> : null}
       <AppButton
         label={submitting ? 'Signing In...' : 'Sign In'}
         disabled={submitting}
