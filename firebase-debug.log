@@ -1,0 +1,139 @@
+[debug] [2026-02-28T04:43:40.613Z] ----------------------------------------------------------------------
+[debug] [2026-02-28T04:43:40.616Z] Command:       C:\Program Files\nodejs\node.exe C:\Users\abhij\AppData\Roaming\npm\node_modules\firebase-tools\lib\bin\firebase.js deploy --only hosting
+[debug] [2026-02-28T04:43:40.616Z] CLI Version:   15.6.0
+[debug] [2026-02-28T04:43:40.616Z] Platform:      win32
+[debug] [2026-02-28T04:43:40.616Z] Node Version:  v25.6.1
+[debug] [2026-02-28T04:43:40.616Z] Time:          Sat Feb 28 2026 10:13:40 GMT+0530 (India Standard Time)
+[debug] [2026-02-28T04:43:40.616Z] ----------------------------------------------------------------------
+[debug] 
+[debug] [2026-02-28T04:43:40.618Z] >>> [apiv2][query] GET https://firebase-public.firebaseio.com/cli.json [none]
+[debug] [2026-02-28T04:43:42.706Z] > command requires scopes: ["email","openid","https://www.googleapis.com/auth/cloudplatformprojects.readonly","https://www.googleapis.com/auth/firebase","https://www.googleapis.com/auth/cloud-platform"]
+[debug] [2026-02-28T04:43:42.707Z] > authorizing via signed-in user (abhijitmajipersonal@gmail.com)
+[debug] [2026-02-28T04:43:42.707Z] [iam] checking project loveall-3ca71 for permissions ["firebase.projects.get","firebasehosting.sites.update"]
+[debug] [2026-02-28T04:43:42.708Z] Checked if tokens are valid: false, expires at: 1771763825232
+[debug] [2026-02-28T04:43:42.708Z] Checked if tokens are valid: false, expires at: 1771763825232
+[debug] [2026-02-28T04:43:42.709Z] > refreshing access token with scopes: []
+[debug] [2026-02-28T04:43:42.711Z] >>> [apiv2][query] POST https://www.googleapis.com/oauth2/v3/token [none]
+[debug] [2026-02-28T04:43:42.711Z] >>> [apiv2][body] POST https://www.googleapis.com/oauth2/v3/token [omitted]
+[debug] [2026-02-28T04:43:42.860Z] <<< [apiv2][status] POST https://www.googleapis.com/oauth2/v3/token 200
+[debug] [2026-02-28T04:43:42.861Z] <<< [apiv2][body] POST https://www.googleapis.com/oauth2/v3/token [omitted]
+[debug] [2026-02-28T04:43:42.872Z] >>> [apiv2][query] POST https://cloudresourcemanager.googleapis.com/v1/projects/loveall-3ca71:testIamPermissions [none]
+[debug] [2026-02-28T04:43:42.872Z] >>> [apiv2][(partial)header] POST https://cloudresourcemanager.googleapis.com/v1/projects/loveall-3ca71:testIamPermissions  x-goog-user-project=loveall-3ca71
+[debug] [2026-02-28T04:43:42.872Z] >>> [apiv2][body] POST https://cloudresourcemanager.googleapis.com/v1/projects/loveall-3ca71:testIamPermissions {"permissions":["firebase.projects.get","firebasehosting.sites.update"]}
+[debug] [2026-02-28T04:43:43.255Z] <<< [apiv2][status] GET https://firebase-public.firebaseio.com/cli.json 200
+[debug] [2026-02-28T04:43:43.255Z] <<< [apiv2][body] GET https://firebase-public.firebaseio.com/cli.json {"cloudBuildErrorAfter":1594252800000,"cloudBuildWarnAfter":1590019200000,"defaultNode10After":1594252800000,"minVersion":"3.0.5","node8DeploysDisabledAfter":1613390400000,"node8RuntimeDisabledAfter":1615809600000,"node8WarnAfter":1600128000000}
+[debug] [2026-02-28T04:43:44.178Z] <<< [apiv2][status] POST https://cloudresourcemanager.googleapis.com/v1/projects/loveall-3ca71:testIamPermissions 200
+[debug] [2026-02-28T04:43:44.179Z] <<< [apiv2][body] POST https://cloudresourcemanager.googleapis.com/v1/projects/loveall-3ca71:testIamPermissions {"permissions":["firebase.projects.get","firebasehosting.sites.update"]}
+[debug] [2026-02-28T04:43:44.182Z] Checked if tokens are valid: true, expires at: 1772257421861
+[debug] [2026-02-28T04:43:44.182Z] Checked if tokens are valid: true, expires at: 1772257421861
+[debug] [2026-02-28T04:43:44.186Z] >>> [apiv2][query] GET https://firebase.googleapis.com/v1beta1/projects/loveall-3ca71 [none]
+[debug] [2026-02-28T04:43:44.656Z] <<< [apiv2][status] GET https://firebase.googleapis.com/v1beta1/projects/loveall-3ca71 200
+[debug] [2026-02-28T04:43:44.656Z] <<< [apiv2][body] GET https://firebase.googleapis.com/v1beta1/projects/loveall-3ca71 {"projectId":"loveall-3ca71","projectNumber":"171897984766","displayName":" LoveAll","name":"projects/loveall-3ca71","resources":{"hostingSite":"loveall-3ca71"},"state":"ACTIVE","etag":"1_0d94ddea-9393-4da4-b5b9-c01044313121"}
+[info] 
+[info] === Deploying to 'loveall-3ca71'...
+[info] 
+[info] i  deploying hosting 
+[debug] [2026-02-28T04:43:44.671Z] Checked if tokens are valid: true, expires at: 1772257421861
+[debug] [2026-02-28T04:43:44.671Z] Checked if tokens are valid: true, expires at: 1772257421861
+[debug] [2026-02-28T04:43:44.673Z] >>> [apiv2][query] POST https://firebasehosting.googleapis.com/v1beta1/projects/-/sites/loveall-3ca71/versions [none]
+[debug] [2026-02-28T04:43:44.673Z] >>> [apiv2][body] POST https://firebasehosting.googleapis.com/v1beta1/projects/-/sites/loveall-3ca71/versions {"status":"CREATED","labels":{"deployment-tool":"cli-firebase"}}
+[debug] [2026-02-28T04:43:46.312Z] <<< [apiv2][status] POST https://firebasehosting.googleapis.com/v1beta1/projects/-/sites/loveall-3ca71/versions 200
+[debug] [2026-02-28T04:43:46.312Z] <<< [apiv2][body] POST https://firebasehosting.googleapis.com/v1beta1/projects/-/sites/loveall-3ca71/versions {"name":"projects/171897984766/sites/loveall-3ca71/versions/f6592ab93f4eb626","status":"CREATED","config":{},"labels":{"deployment-tool":"cli-firebase"}}
+[info] i  hosting[loveall-3ca71]: beginning deploy... 
+[info] i  hosting[loveall-3ca71]: found 26 files in dist 
+[debug] [2026-02-28T04:43:46.330Z] [hosting] uploading with 200 concurrency
+[debug] [2026-02-28T04:43:46.475Z] Checked if tokens are valid: true, expires at: 1772257421861
+[debug] [2026-02-28T04:43:46.475Z] Checked if tokens are valid: true, expires at: 1772257421861
+[debug] [2026-02-28T04:43:46.477Z] [hosting] hash cache [ZGlzdA] stored for 26 files
+[debug] [2026-02-28T04:43:46.478Z] [hosting][hash queue][FINAL] {"max":140,"min":22,"avg":27.615384615384617,"active":0,"complete":26,"success":26,"errored":0,"retried":0,"total":26,"elapsed":145}
+[debug] [2026-02-28T04:43:46.478Z] >>> [apiv2][query] POST https://firebasehosting.googleapis.com/v1beta1/projects/171897984766/sites/loveall-3ca71/versions/f6592ab93f4eb626:populateFiles [none]
+[debug] [2026-02-28T04:43:46.478Z] >>> [apiv2][body] POST https://firebasehosting.googleapis.com/v1beta1/projects/171897984766/sites/loveall-3ca71/versions/f6592ab93f4eb626:populateFiles {"files":{"/_sitemap.html":"f77fce46ccc6694cb2193183b08c4fa6d5b1d8e8977295db74d17914154de636","/register.html":"79e771efebd8311f72c8211947fa8d84b6ed52278e5cd7627368cf9284d87894","/new-tournament.html":"79e771efebd8311f72c8211947fa8d84b6ed52278e5cd7627368cf9284d87894","/dashboard.html":"cec4d6a664e1eac295bdf16a3fbb00585a2b29ffcba72a9819126e2a0d90afdf","/favicon.ico":"3aa075641cdca4ab445cd3306616a835126e411730852ae3b366b2ec4a525acd","/index.html":"ca2e8ebe45ffd4a965ecaa60bd5a52c7b7b164185c4316269f227a9be7cd4617","/login.html":"79e771efebd8311f72c8211947fa8d84b6ed52278e5cd7627368cf9284d87894","/+not-found.html":"f77fce46ccc6694cb2193183b08c4fa6d5b1d8e8977295db74d17914154de636","/[id]/setup.html":"fdb9b1f2f6921c2986a081c10acdc821ac07acd4cd8836d7e4b7d1f486845f12","/[id]/schedule.html":"fdb9b1f2f6921c2986a081c10acdc821ac07acd4cd8836d7e4b7d1f486845f12","/tv/[slug].html":"7c4f85eac0c9de935315413d49d9f3b0aa80247f66de7990045b4ddd32c0bbc8","/assets/assets/images/splash-icon.97dae5a0e62ad8551d8a31897b425e63.png":"c86b90e324f0371b0679bddd681226b7879a82b70880f986b13f815e8abdc4fd","/enter/[matchId].html":"da61a3fe3172bbf3c44e7f5096465f4c9f9700157bc3e30938c11cf0234c685c","/t/[slug].html":"da61a3fe3172bbf3c44e7f5096465f4c9f9700157bc3e30938c11cf0234c685c","/[id]/manage.html":"d67e09331e8a0217002ab29625c5f24618719de600bfc012334dc29d5aeef781","/(organizer)/new-tournament.html":"79e771efebd8311f72c8211947fa8d84b6ed52278e5cd7627368cf9284d87894","/(scorekeeper)/enter/[matchId].html":"da61a3fe3172bbf3c44e7f5096465f4c9f9700157bc3e30938c11cf0234c685c","/[id]/results.html":"fdb9b1f2f6921c2986a081c10acdc821ac07acd4cd8836d7e4b7d1f486845f12","/(organizer)/[id]/setup.html":"fdb9b1f2f6921c2986a081c10acdc821ac07acd4cd8836d7e4b7d1f486845f12","/(organizer)/dashboard.html":"cec4d6a664e1eac295bdf16a3fbb00585a2b29ffcba72a9819126e2a0d90afdf","/(organizer)/[id]/results.html":"fdb9b1f2f6921c2986a081c10acdc821ac07acd4cd8836d7e4b7d1f486845f12","/(organizer)/[id]/schedule.html":"fdb9b1f2f6921c2986a081c10acdc821ac07acd4cd8836d7e4b7d1f486845f12","/(organizer)/[id]/manage.html":"d67e09331e8a0217002ab29625c5f24618719de600bfc012334dc29d5aeef781","/(auth)/register.html":"79e771efebd8311f72c8211947fa8d84b6ed52278e5cd7627368cf9284d87894","/(auth)/login.html":"79e771efebd8311f72c8211947fa8d84b6ed52278e5cd7627368cf9284d87894","/_expo/static/js/web/entry-370a112d4cecae97e74d061e57ef7320.js":"8eec933eaedbae521215ec316d8635993bb0fd093fc4ca7e1fb1eb5a1adc395a"}}
+[debug] [2026-02-28T04:43:47.266Z] <<< [apiv2][status] POST https://firebasehosting.googleapis.com/v1beta1/projects/171897984766/sites/loveall-3ca71/versions/f6592ab93f4eb626:populateFiles 200
+[debug] [2026-02-28T04:43:47.267Z] <<< [apiv2][body] POST https://firebasehosting.googleapis.com/v1beta1/projects/171897984766/sites/loveall-3ca71/versions/f6592ab93f4eb626:populateFiles {"uploadUrl":"https://upload-firebasehosting.googleapis.com/upload/sites/loveall-3ca71/versions/f6592ab93f4eb626/files"}
+[debug] [2026-02-28T04:43:47.270Z] [hosting][populate queue][FINAL] {"max":794,"min":794,"avg":794,"active":0,"complete":1,"success":1,"errored":0,"retried":0,"total":1,"elapsed":795}
+[debug] [2026-02-28T04:43:47.275Z] [hosting] uploads queued: 0
+[debug] [2026-02-28T04:43:47.280Z] [hosting][upload queue][FINAL] {"max":0,"min":9999999999,"avg":0,"active":0,"complete":0,"success":0,"errored":0,"retried":0,"total":0,"elapsed":1772253827280}
+[info] i  hosting: upload complete 
+[info] +  hosting[loveall-3ca71]: file upload complete 
+[debug] [2026-02-28T04:43:47.287Z] [hosting] deploy completed after 971ms
+[debug] [2026-02-28T04:43:47.288Z] [
+  {
+    "config": {
+      "public": "dist",
+      "cleanUrls": true,
+      "ignore": [
+        "firebase.json",
+        "**/.*",
+        "**/node_modules/**"
+      ],
+      "headers": [
+        {
+          "source": "/index.html",
+          "headers": [
+            {
+              "key": "Cache-Control",
+              "value": "no-cache, no-store, must-revalidate"
+            }
+          ]
+        },
+        {
+          "source": "**/*.@(js|css|map|woff|woff2|ttf|otf|png|jpg|jpeg|gif|svg|webp|ico)",
+          "headers": [
+            {
+              "key": "Cache-Control",
+              "value": "public, max-age=31536000, immutable"
+            }
+          ]
+        },
+        {
+          "source": "**",
+          "headers": [
+            {
+              "key": "X-Content-Type-Options",
+              "value": "nosniff"
+            },
+            {
+              "key": "X-Frame-Options",
+              "value": "DENY"
+            },
+            {
+              "key": "Referrer-Policy",
+              "value": "strict-origin-when-cross-origin"
+            }
+          ]
+        }
+      ],
+      "rewrites": [
+        {
+          "source": "**",
+          "destination": "/index.html"
+        }
+      ],
+      "site": "loveall-3ca71"
+    },
+    "version": "projects/171897984766/sites/loveall-3ca71/versions/f6592ab93f4eb626"
+  }
+]
+[info] i  hosting[loveall-3ca71]: finalizing version... 
+[debug] [2026-02-28T04:43:47.293Z] Checked if tokens are valid: true, expires at: 1772257421861
+[debug] [2026-02-28T04:43:47.293Z] Checked if tokens are valid: true, expires at: 1772257421861
+[debug] [2026-02-28T04:43:47.293Z] >>> [apiv2][query] PATCH https://firebasehosting.googleapis.com/v1beta1/projects/-/sites/loveall-3ca71/versions/f6592ab93f4eb626 updateMask=status%2Cconfig
+[debug] [2026-02-28T04:43:47.293Z] >>> [apiv2][body] PATCH https://firebasehosting.googleapis.com/v1beta1/projects/-/sites/loveall-3ca71/versions/f6592ab93f4eb626 {"status":"FINALIZED","config":{"rewrites":[{"glob":"**","path":"/index.html"}],"headers":[{"glob":"/index.html","headers":{"Cache-Control":"no-cache, no-store, must-revalidate"}},{"glob":"**/*.@(js|css|map|woff|woff2|ttf|otf|png|jpg|jpeg|gif|svg|webp|ico)","headers":{"Cache-Control":"public, max-age=31536000, immutable"}},{"glob":"**","headers":{"X-Content-Type-Options":"nosniff","X-Frame-Options":"DENY","Referrer-Policy":"strict-origin-when-cross-origin"}}],"cleanUrls":true}}
+[debug] [2026-02-28T04:43:48.345Z] <<< [apiv2][status] PATCH https://firebasehosting.googleapis.com/v1beta1/projects/-/sites/loveall-3ca71/versions/f6592ab93f4eb626 200
+[debug] [2026-02-28T04:43:48.345Z] <<< [apiv2][body] PATCH https://firebasehosting.googleapis.com/v1beta1/projects/-/sites/loveall-3ca71/versions/f6592ab93f4eb626 {"name":"projects/171897984766/sites/loveall-3ca71/versions/f6592ab93f4eb626","status":"FINALIZED","config":{"headers":[{"headers":{"Cache-Control":"no-cache, no-store, must-revalidate"},"glob":"/index.html"},{"headers":{"Cache-Control":"public, max-age=31536000, immutable"},"glob":"**/*.@(js|css|map|woff|woff2|ttf|otf|png|jpg|jpeg|gif|svg|webp|ico)"},{"headers":{"X-Frame-Options":"DENY","Referrer-Policy":"strict-origin-when-cross-origin","X-Content-Type-Options":"nosniff"},"glob":"**"}],"rewrites":[{"glob":"**","path":"/index.html"}],"cleanUrls":true},"labels":{"deployment-tool":"cli-firebase"},"createTime":"2026-02-28T04:43:43.295325Z","createUser":{"email":"abhijitmajipersonal@gmail.com"},"finalizeTime":"2026-02-28T04:43:45.983419Z","finalizeUser":{"email":"abhijitmajipersonal@gmail.com"}}
+[debug] [2026-02-28T04:43:48.345Z] [hosting] finalized version for loveall-3ca71:[object Object]
+[info] +  hosting[loveall-3ca71]: version finalized 
+[info] i  hosting[loveall-3ca71]: releasing new version... 
+[debug] [2026-02-28T04:43:48.345Z] Checked if tokens are valid: true, expires at: 1772257421861
+[debug] [2026-02-28T04:43:48.345Z] Checked if tokens are valid: true, expires at: 1772257421861
+[debug] [2026-02-28T04:43:48.345Z] >>> [apiv2][query] POST https://firebasehosting.googleapis.com/v1beta1/projects/-/sites/loveall-3ca71/channels/live/releases versionName=projects%2F171897984766%2Fsites%2Floveall-3ca71%2Fversions%2Ff6592ab93f4eb626
+[debug] [2026-02-28T04:43:48.345Z] >>> [apiv2][body] POST https://firebasehosting.googleapis.com/v1beta1/projects/-/sites/loveall-3ca71/channels/live/releases {}
+[debug] [2026-02-28T04:43:49.174Z] <<< [apiv2][status] POST https://firebasehosting.googleapis.com/v1beta1/projects/-/sites/loveall-3ca71/channels/live/releases 200
+[debug] [2026-02-28T04:43:49.175Z] <<< [apiv2][body] POST https://firebasehosting.googleapis.com/v1beta1/projects/-/sites/loveall-3ca71/channels/live/releases {"name":"projects/171897984766/sites/loveall-3ca71/channels/live/releases/1772253826092000","version":{"name":"projects/171897984766/sites/loveall-3ca71/versions/f6592ab93f4eb626","status":"FINALIZED","config":{"headers":[{"headers":{"Cache-Control":"no-cache, no-store, must-revalidate"},"glob":"/index.html"},{"headers":{"Cache-Control":"public, max-age=31536000, immutable"},"glob":"**/*.@(js|css|map|woff|woff2|ttf|otf|png|jpg|jpeg|gif|svg|webp|ico)"},{"headers":{"Referrer-Policy":"strict-origin-when-cross-origin","X-Content-Type-Options":"nosniff","X-Frame-Options":"DENY"},"glob":"**"}],"rewrites":[{"glob":"**","path":"/index.html"}],"cleanUrls":true},"labels":{"deployment-tool":"cli-firebase"},"createTime":"2026-02-28T04:43:43.295325Z","createUser":{"email":"abhijitmajipersonal@gmail.com","imageUrl":"https://lh3.googleusercontent.com/a/ACg8ocJDk0d2lxADiy3DSir2G-vkgkNAu_rxP6H0U28kXUDKX5WOwYI"},"finalizeTime":"2026-02-28T04:43:45.983419Z","finalizeUser":{"email":"abhijitmajipersonal@gmail.com","imageUrl":"https://lh3.googleusercontent.com/a/ACg8ocJDk0d2lxADiy3DSir2G-vkgkNAu_rxP6H0U28kXUDKX5WOwYI"}},"type":"DEPLOY","releaseTime":"2026-02-28T04:43:46.092Z","releaseUser":{"email":"abhijitmajipersonal@gmail.com","imageUrl":"https://lh3.googleusercontent.com/a/ACg8ocJDk0d2lxADiy3DSir2G-vkgkNAu_rxP6H0U28kXUDKX5WOwYI"}}
+[debug] [2026-02-28T04:43:49.175Z] [hosting] release: {"name":"projects/171897984766/sites/loveall-3ca71/channels/live/releases/1772253826092000","version":{"name":"projects/171897984766/sites/loveall-3ca71/versions/f6592ab93f4eb626","status":"FINALIZED","config":{"headers":[{"headers":{"Cache-Control":"no-cache, no-store, must-revalidate"},"glob":"/index.html"},{"headers":{"Cache-Control":"public, max-age=31536000, immutable"},"glob":"**/*.@(js|css|map|woff|woff2|ttf|otf|png|jpg|jpeg|gif|svg|webp|ico)"},{"headers":{"Referrer-Policy":"strict-origin-when-cross-origin","X-Content-Type-Options":"nosniff","X-Frame-Options":"DENY"},"glob":"**"}],"rewrites":[{"glob":"**","path":"/index.html"}],"cleanUrls":true},"labels":{"deployment-tool":"cli-firebase"},"createTime":"2026-02-28T04:43:43.295325Z","createUser":{"email":"abhijitmajipersonal@gmail.com","imageUrl":"https://lh3.googleusercontent.com/a/ACg8ocJDk0d2lxADiy3DSir2G-vkgkNAu_rxP6H0U28kXUDKX5WOwYI"},"finalizeTime":"2026-02-28T04:43:45.983419Z","finalizeUser":{"email":"abhijitmajipersonal@gmail.com","imageUrl":"https://lh3.googleusercontent.com/a/ACg8ocJDk0d2lxADiy3DSir2G-vkgkNAu_rxP6H0U28kXUDKX5WOwYI"}},"type":"DEPLOY","releaseTime":"2026-02-28T04:43:46.092Z","releaseUser":{"email":"abhijitmajipersonal@gmail.com","imageUrl":"https://lh3.googleusercontent.com/a/ACg8ocJDk0d2lxADiy3DSir2G-vkgkNAu_rxP6H0U28kXUDKX5WOwYI"}}
+[info] +  hosting[loveall-3ca71]: release complete 
+[info] 
+[info] +  Deploy complete! 
+[info] 
+[info] Project Console: https://console.firebase.google.com/project/loveall-3ca71/overview
+[info] Hosting URL: https://loveall-3ca71.web.app
