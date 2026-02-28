@@ -73,6 +73,8 @@ export interface ScoreGame {
   gameNumber: number;
   p1Score: number;
   p2Score: number;
+  currentServer?: 'p1' | 'p2' | null;
+  sidesSwapped?: boolean;
   winner: 'p1' | 'p2' | null;
   startedAt: FirestoreDate | null;
   endedAt: FirestoreDate | null;
