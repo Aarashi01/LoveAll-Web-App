@@ -1,16 +1,16 @@
+import { Link, useLocalSearchParams } from 'expo-router';
 import { useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, Pressable, SafeAreaView, ScrollView, StyleSheet, Text, View } from 'react-native';
-import { Link, useLocalSearchParams } from 'expo-router';
 
 import { GroupStandingsTable } from '@/components/bracket/GroupStandingsTable';
 import { KnockoutBracket } from '@/components/bracket/KnockoutBracket';
+import { LiveScoreCard } from '@/components/score/LiveScoreCard';
 import { AppCard } from '@/components/ui/AppCard';
 import { theme, toCategoryLabel, toRoundLabel } from '@/constants/theme';
-import { LiveScoreCard } from '@/components/score/LiveScoreCard';
 import { useMatches } from '@/hooks/useMatches';
-import { calculateStandings } from '@/lib/schedule-generator';
 import { subscribeToPublicTournamentBySlug } from '@/lib/firestore/tournaments';
 import { type MatchCategory, type MatchDocument, type TournamentDocument } from '@/lib/firestore/types';
+import { calculateStandings } from '@/lib/schedule-generator';
 
 type SpectatorTab = 'live' | 'groups' | 'bracket' | 'results';
 
@@ -68,7 +68,7 @@ export default function SpectatorScreen() {
   if (loadingTournament || loadingMatches) {
     return (
       <SafeAreaView style={styles.centered}>
-        <ActivityIndicator size="large" />
+        <ActivityIndicator size="large" color="#10B981" />
       </SafeAreaView>
     );
   }
@@ -85,14 +85,10 @@ export default function SpectatorScreen() {
     <SafeAreaView style={styles.safeArea}>
       <View style={styles.header}>
         <Text style={styles.title}>{tournament.name}</Text>
-      </View>
-
-      <AppCard style={styles.banner}>
-        <Text style={styles.bannerText}>Viewing as spectator. Log in to manage.</Text>
-        <Link href="/(auth)/login" style={styles.bannerLink}>
+        <Link href="/(auth)/login" style={styles.loginLink}>
           Login
         </Link>
-      </AppCard>
+      </View>
 
       <View style={styles.tabsRow}>
         {visibleTabs.map((item) => (
@@ -102,7 +98,7 @@ export default function SpectatorScreen() {
             onPress={() => setTab(item)}
           >
             <Text style={[styles.tabLabel, tab === item && styles.tabLabelActive]}>
-              {item === 'live' ? 'Live Matches' : item[0].toUpperCase() + item.slice(1)}
+              {item === 'live' ? 'Live' : item[0].toUpperCase() + item.slice(1)}
             </Text>
           </Pressable>
         ))}
@@ -113,7 +109,7 @@ export default function SpectatorScreen() {
           (liveMatches.length === 0 ? (
             <Text style={styles.emptyText}>No live matches right now.</Text>
           ) : (
-            liveMatches.map((match) => <LiveScoreCard key={match.id} match={match} compact />)
+            liveMatches.map((match) => <LiveScoreCard key={match.id} match={match} compact dark />)
           ))}
 
         {tab === 'groups' &&
@@ -146,17 +142,28 @@ export default function SpectatorScreen() {
           ) : (
             matches
               .filter((match) => match.status === 'completed')
-              .map((match) => (
-                <AppCard key={match.id} style={styles.resultItem}>
-                  <Text style={styles.resultTitle}>
-                    {toCategoryLabel(match.category)} {toRoundLabel(match.round)}
-                  </Text>
-                  <Text style={styles.resultBody}>
-                    Winner:{' '}
-                    {match.winnerId === match.player1Id ? match.player1Name : match.player2Name}
-                  </Text>
-                </AppCard>
-              ))
+              .map((match) => {
+                const gameScores = match.scores
+                  .filter((g) => g.winner !== null)
+                  .map((g) => `${g.p1Score}-${g.p2Score}`)
+                  .join(' · ');
+                return (
+                  <AppCard key={match.id} style={styles.resultItem}>
+                    <Text style={styles.resultCategory}>
+                      {toCategoryLabel(match.category)} · {toRoundLabel(match.round)}
+                    </Text>
+                    <Text style={styles.resultWinner}>
+                      🏆 {match.winnerId === match.player1Id ? match.player1Name : match.player2Name}
+                    </Text>
+                    <Text style={styles.resultOpponent}>
+                      vs {match.winnerId === match.player1Id ? match.player2Name : match.player1Name}
+                    </Text>
+                    {gameScores ? (
+                      <Text style={styles.resultScores}>{gameScores}</Text>
+                    ) : null}
+                  </AppCard>
+                );
+              })
           ))}
       </ScrollView>
     </SafeAreaView>
@@ -173,84 +180,96 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     padding: 24,
+    backgroundColor: theme.colors.background,
   },
   header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
     paddingHorizontal: 16,
-    paddingTop: 8,
-    paddingBottom: 6,
+    paddingTop: 10,
+    paddingBottom: 8,
   },
   title: {
-    fontSize: 24,
-    lineHeight: 30,
+    fontSize: 22,
     fontWeight: '900',
-    color: theme.colors.text,
-  },
-  banner: {
-    marginHorizontal: 16,
-    marginBottom: 8,
-    flexDirection: 'row',
-    gap: 8,
-    alignItems: 'center',
-  },
-  bannerText: {
+    color: '#F8FAFC',
     flex: 1,
-    color: '#334155',
-    fontWeight: '600',
   },
-  bannerLink: {
-    color: '#0F766E',
+  loginLink: {
+    color: '#60A5FA',
     fontWeight: '800',
+    fontSize: 14,
   },
   tabsRow: {
     flexDirection: 'row',
     paddingHorizontal: 12,
     gap: 8,
     flexWrap: 'wrap',
+    marginBottom: 4,
   },
   tabButton: {
-    paddingHorizontal: 12,
-    paddingVertical: 9,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
     borderRadius: 999,
     borderWidth: 1,
-    borderColor: theme.colors.border,
-    backgroundColor: theme.colors.surface,
+    borderColor: 'rgba(255, 255, 255, 0.1)',
+    backgroundColor: 'rgba(30, 41, 59, 0.5)',
   },
   tabButtonActive: {
-    borderColor: '#166534',
-    backgroundColor: '#DCFCE7',
+    borderColor: 'rgba(16, 185, 129, 0.5)',
+    backgroundColor: 'rgba(16, 185, 129, 0.12)',
   },
   tabLabel: {
-    color: '#334155',
+    color: '#94A3B8',
     fontWeight: '700',
+    fontSize: 14,
   },
   tabLabelActive: {
-    color: '#166534',
+    color: '#10B981',
+    fontWeight: '800',
   },
   content: {
     padding: 12,
     gap: 10,
-    paddingBottom: 24,
+    paddingBottom: 32,
   },
   emptyText: {
-    color: theme.colors.textMuted,
+    color: '#64748B',
     fontWeight: '700',
     textAlign: 'center',
-    marginTop: 28,
+    marginTop: 40,
+    fontSize: 15,
   },
   resultItem: {
-    borderWidth: 1,
-    borderColor: '#BFDBFE',
+    gap: 4,
   },
-  resultTitle: {
+  resultCategory: {
+    fontSize: 12,
+    fontWeight: '800',
+    color: '#94A3B8',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  resultWinner: {
     fontWeight: '900',
-    color: '#1E3A8A',
+    color: '#10B981',
+    fontSize: 17,
   },
-  resultBody: {
+  resultOpponent: {
     fontWeight: '700',
-    color: '#334155',
+    color: '#94A3B8',
+    fontSize: 15,
+  },
+  resultScores: {
+    color: '#64748B',
+    fontSize: 14,
+    fontWeight: '700',
+    marginTop: 2,
+    letterSpacing: 0.5,
   },
   errorText: {
-    color: '#B91C1C',
+    color: '#EF4444',
     fontWeight: '700',
     textAlign: 'center',
   },

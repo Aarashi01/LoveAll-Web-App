@@ -11,7 +11,7 @@
     "splash": {
       "image": "./assets/images/splash-icon.png",
       "resizeMode": "contain",
-      "backgroundColor": "#ffffff"
+      "backgroundColor": "#0B1120"
     },
     "ios": {
       "supportsTablet": true
@@ -27,7 +27,13 @@
     "web": {
       "bundler": "metro",
       "output": "static",
-      "favicon": "./assets/images/favicon.png"
+      "favicon": "./assets/images/favicon.png",
+      "name": "LoveAll - Badminton Scorer",
+      "shortName": "LoveAll",
+      "themeColor": "#0B1120",
+      "backgroundColor": "#0B1120",
+      "display": "standalone",
+      "description": "Professional badminton score recorder for tournaments and casual matches"
     },
     "plugins": [
       "expo-router"

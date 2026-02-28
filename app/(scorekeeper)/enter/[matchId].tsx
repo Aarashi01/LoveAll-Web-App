@@ -1,15 +1,17 @@
 import { router, useLocalSearchParams } from 'expo-router';
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Modal,
   SafeAreaView,
-  ScrollView,
   StyleSheet,
   Text,
-  View
+  View,
+  useWindowDimensions
 } from 'react-native';
 
+import { GameScoreBar } from '@/components/score/GameScoreBar';
+import { IntervalTimer } from '@/components/score/IntervalTimer';
 import { ScoreInput } from '@/components/score/ScoreInput';
 import { AppButton } from '@/components/ui/AppButton';
 import { AppCard } from '@/components/ui/AppCard';
@@ -18,9 +20,13 @@ import { theme, toCategoryLabel, toRoundLabel } from '@/constants/theme';
 import { useAuth } from '@/hooks/useAuth';
 import { useTournament } from '@/hooks/useTournament';
 import { completeMatch, subscribeToMatch, updateMatch, updateScore } from '@/lib/firestore/matches';
-import { type MatchDocument, type ScoreGame, type ScoringRules } from '@/lib/firestore/types';
+import { type MatchDocument, type ScoreGame, type ScoringRules, type ServiceCourt } from '@/lib/firestore/types';
 import { activateScorekeeperSession } from '@/lib/scorekeeper-session';
 import { useAppStore } from '@/store/app.store';
+
+// ---------------------------------------------------------------------------
+// Helpers
+// ---------------------------------------------------------------------------
 
 type ScoreAction = {
   gameIndex: number;
@@ -68,11 +74,75 @@ function countWins(scores: ScoreGame[]): { p1: number; p2: number } {
   );
 }
 
+/**
+ * BWF service court: right when server's score is even, left when odd.
+ */
+function getServiceCourt(serverScore: number): ServiceCourt {
+  return serverScore % 2 === 0 ? 'right' : 'left';
+}
+
+/**
+ * Check if a mid-game interval should trigger:
+ * BWF Law says interval at leading score = 11.
+ */
+function shouldTriggerMidGameInterval(
+  p1Score: number,
+  p2Score: number,
+  prevP1: number,
+  prevP2: number,
+): boolean {
+  const leadingScore = Math.max(p1Score, p2Score);
+  const prevLeading = Math.max(prevP1, prevP2);
+  return leadingScore >= 11 && prevLeading < 11;
+}
+
+/**
+ * Check if change-of-ends should happen (at 11 in game 3).
+ */
+function shouldTriggerChangeOfEnds(
+  gameNumber: number,
+  bestOf: number,
+  p1Score: number,
+  p2Score: number,
+  prevP1: number,
+  prevP2: number,
+): boolean {
+  if (gameNumber !== bestOf) return false; // Only in the deciding game
+  const leadingScore = Math.max(p1Score, p2Score);
+  const prevLeading = Math.max(prevP1, prevP2);
+  return leadingScore >= 11 && prevLeading < 11;
+}
+
+function isDeuce(p1Score: number, p2Score: number, rules: ScoringRules): boolean {
+  return (
+    rules.deuceEnabled &&
+    p1Score >= rules.deuceAt &&
+    p2Score >= rules.deuceAt &&
+    p1Score < rules.maxPoints &&
+    p2Score < rules.maxPoints
+  );
+}
+
+function formatElapsed(seconds: number): string {
+  const mins = Math.floor(seconds / 60);
+  const secs = seconds % 60;
+  return `${mins}:${secs.toString().padStart(2, '0')}`;
+}
+
+function isDoublesCategory(category: string): boolean {
+  return category === 'MD' || category === 'WD' || category === 'XD';
+}
+
+// ---------------------------------------------------------------------------
+// Component
+// ---------------------------------------------------------------------------
+
 export default function ScoreEntryScreen() {
   const { matchId, tournamentId } = useLocalSearchParams<{ matchId: string; tournamentId?: string }>();
   const { user } = useAuth();
   const { tournament, loading: tournamentLoading } = useTournament(tournamentId);
   const scorekeeper = useAppStore((state) => state.scorekeeper);
+  const { height: windowHeight } = useWindowDimensions();
 
   const [match, setMatch] = useState<MatchDocument | null>(null);
   const [matchLoading, setMatchLoading] = useState(true);
@@ -85,6 +155,27 @@ export default function ScoreEntryScreen() {
   const [showEndMatchModal, setShowEndMatchModal] = useState(false);
   const [showCelebrationModal, setShowCelebrationModal] = useState(false);
   const [activeServer, setActiveServer] = useState<'p1' | 'p2' | null>(null);
+
+  // BWF interval state
+  const [intervalType, setIntervalType] = useState<'mid-game' | 'between-games' | 'change-ends' | null>(null);
+  const [intervalMessage, setIntervalMessage] = useState<string | undefined>(undefined);
+
+  // Match timer
+  const [matchStartTime, setMatchStartTime] = useState<number | null>(null);
+  const [elapsed, setElapsed] = useState(0);
+  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  // Start match timer on first point
+  useEffect(() => {
+    if (matchStartTime && !timerRef.current) {
+      timerRef.current = setInterval(() => {
+        setElapsed(Math.floor((Date.now() - matchStartTime) / 1000));
+      }, 1000);
+    }
+    return () => {
+      if (timerRef.current) clearInterval(timerRef.current);
+    };
+  }, [matchStartTime]);
 
   useEffect(() => {
     const hasActivePinSession =
@@ -122,60 +213,65 @@ export default function ScoreEntryScreen() {
 
   const { index: activeGameIndex, game: activeGame } = useMemo(() => getCurrentGame(match), [match]);
 
-  const gameHistory = useMemo(
-    () =>
-      (match?.scores ?? [])
-        .filter((score) => score.winner !== null)
-        .map((score) => `${score.p1Score}-${score.p2Score}`)
-        .join(', '),
-    [match],
+  const gamesToWin = useMemo(
+    () => (tournament ? Math.ceil(tournament.scoringRules.bestOf / 2) : 2),
+    [tournament],
   );
+
+  const isDeuceState = useMemo(
+    () => (tournament ? isDeuce(activeGame.p1Score, activeGame.p2Score, tournament.scoringRules) : false),
+    [activeGame, tournament],
+  );
+
+  const serviceCourt = useMemo<ServiceCourt | undefined>(() => {
+    if (!activeServer || !match) return undefined;
+    const serverScore = activeServer === 'p1' ? activeGame.p1Score : activeGame.p2Score;
+    return getServiceCourt(serverScore);
+  }, [activeServer, activeGame, match]);
+
+  // Determine if this is a doubles match
+  const isDoubles = match ? isDoublesCategory(match.category) : false;
+
+  // ---------------------------------------------------------------------------
+  // Handlers
+  // ---------------------------------------------------------------------------
 
   const handleScoreChange = async (player: 'p1' | 'p2', delta: 1 | -1) => {
     if (!tournamentId || !match || !tournament) return;
 
-    const nextP1 = player === 'p1' ? activeGame.p1Score + delta : activeGame.p1Score;
-    const nextP2 = player === 'p2' ? activeGame.p2Score + delta : activeGame.p2Score;
+    const prevP1 = activeGame.p1Score;
+    const prevP2 = activeGame.p2Score;
+    const nextP1 = player === 'p1' ? prevP1 + delta : prevP1;
+    const nextP2 = player === 'p2' ? prevP2 + delta : prevP2;
 
     if (nextP1 < 0 || nextP2 < 0) return;
 
-    // Handle initial serve or keep current server if undefined
-    let currentServer = activeGame.currentServer;
-    if (!currentServer && delta === 1) {
-      currentServer = player;
+    // Start match timer on first point
+    if (!matchStartTime && delta === 1) {
+      setMatchStartTime(Date.now());
     }
 
-    // Determine if service over happened
-    let nextServer = currentServer;
-    if (delta === 1 && currentServer && currentServer !== player) {
-      nextServer = player;
-    }
-
-    // Determine if sides should be swapped
-    let sidesSwapped = activeGame.sidesSwapped ?? false;
-    const isFinalGame = activeGameIndex === tournament.scoringRules.bestOf - 1;
-    const swapAt = tournament.scoringRules.pointsPerGame === 21 ? 11 : Math.ceil(tournament.scoringRules.pointsPerGame / 2);
-
-    if (isFinalGame && !sidesSwapped && (nextP1 === swapAt || nextP2 === swapAt)) {
-      sidesSwapped = true;
-    }
-
-    await updateScore(tournamentId, match.id, activeGameIndex, {
-      p1Score: nextP1,
-      p2Score: nextP2,
-      currentServer: nextServer,
-      sidesSwapped,
-    });
-    setHistory((prev) => [
-      ...prev.slice(-4),
-      { gameIndex: activeGameIndex, player, delta },
-    ]);
+    await updateScore(tournamentId, match.id, activeGameIndex, player, delta);
+    setHistory((prev) => [...prev.slice(-4), { gameIndex: activeGameIndex, player, delta }]);
 
     if (delta === 1) {
       setActiveServer(player);
     }
 
     if (delta === -1) return;
+
+    // Check for mid-game interval at 11
+    if (shouldTriggerMidGameInterval(nextP1, nextP2, prevP1, prevP2)) {
+      setIntervalType('mid-game');
+      setIntervalMessage(undefined);
+    }
+
+    // Check for change of ends at 11 in deciding game
+    if (shouldTriggerChangeOfEnds(activeGame.gameNumber, tournament.scoringRules.bestOf, nextP1, nextP2, prevP1, prevP2)) {
+      // This overlaps with mid-game interval — show change-ends instead since it's more important
+      setIntervalType('change-ends');
+      setIntervalMessage('Change ends at 11 in the deciding game. Players also take a 60-second interval.');
+    }
 
     const winner = getGameWinner(nextP1, nextP2, tournament.scoringRules);
     if (!winner) return;
@@ -191,7 +287,6 @@ export default function ScoreEntryScreen() {
     };
 
     const wins = countWins(updatedScores);
-    const gamesToWin = Math.ceil(tournament.scoringRules.bestOf / 2);
     const matchWinnerId =
       wins.p1 >= gamesToWin ? match.player1Id : wins.p2 >= gamesToWin ? match.player2Id : null;
 
@@ -202,6 +297,7 @@ export default function ScoreEntryScreen() {
       return;
     }
 
+    // Start next game
     if (!updatedScores[activeGameIndex + 1]) {
       updatedScores.push({
         gameNumber: updatedScores.length + 1,
@@ -214,6 +310,10 @@ export default function ScoreEntryScreen() {
     }
 
     await updateMatch(tournamentId, match.id, { scores: updatedScores, status: 'live' });
+
+    // Between-games interval + change of ends
+    setIntervalType('between-games');
+    setIntervalMessage('Game complete. Players change ends and take a 2-minute interval.');
   };
 
   const handleUndo = async () => {
@@ -221,19 +321,14 @@ export default function ScoreEntryScreen() {
     if (!last || !tournamentId || !match) return;
 
     const reverseDelta = (last.delta * -1) as 1 | -1;
-
-    // Slice off any newly created blank games that occurred after the game we are undoing
     const updatedScores = match.scores.slice(0, last.gameIndex + 1);
-
-    // Apply the reversed score to the targeted game
     const targetGame = updatedScores[last.gameIndex];
     if (!targetGame) return;
 
     updatedScores[last.gameIndex] = {
       ...targetGame,
-      p1Score: last.player === 'p1' ? Math.max(0, targetGame.p1Score + reverseDelta) : targetGame.p1Score,
-      p2Score: last.player === 'p2' ? Math.max(0, targetGame.p2Score + reverseDelta) : targetGame.p2Score,
-      winner: null, // Always clear the winner flag if we are undoing a point
+      [scoreField]: Math.max(0, targetGame[scoreField] + reverseDelta),
+      winner: null,
       endedAt: null,
     };
 
@@ -241,7 +336,6 @@ export default function ScoreEntryScreen() {
       setPendingWinnerId(null);
     }
 
-    // Use updateMatch to apply the fully reconstructed scores array (removes extra games + clears winner)
     await updateMatch(tournamentId, match.id, { scores: updatedScores, status: 'live' });
     setHistory((prev) => prev.slice(0, -1));
   };
@@ -277,13 +371,21 @@ export default function ScoreEntryScreen() {
     setPendingWinnerId(null);
     setShowEndMatchModal(false);
 
-    // Attempt to route back nicely, which returns the user to the schedule or bracket
     if (router.canGoBack()) {
       router.back();
     } else {
       router.replace('/');
     }
   };
+
+  const handleDismissInterval = useCallback(() => {
+    setIntervalType(null);
+    setIntervalMessage(undefined);
+  }, []);
+
+  // ---------------------------------------------------------------------------
+  // Render
+  // ---------------------------------------------------------------------------
 
   if (matchLoading || tournamentLoading) {
     return (
@@ -309,18 +411,10 @@ export default function ScoreEntryScreen() {
     );
   }
 
-  return (
-    <SafeAreaView style={styles.safeArea}>
-      <View style={styles.header}>
-        <Text style={styles.headerTitle}>
-          {toCategoryLabel(match.category)} - {toRoundLabel(match.round)}
-        </Text>
-        <Text style={styles.headerSubTitle}>
-          {typeof match.courtNumber === 'number' ? `Court ${match.courtNumber}` : 'Court TBD'}
-        </Text>
-      </View>
-
-      {!pinValidated ? (
+  // PIN gate
+  if (!pinValidated) {
+    return (
+      <SafeAreaView style={styles.safeArea}>
         <View style={styles.pinContainer}>
           <AppCard style={styles.pinCard}>
             <Text style={styles.pinTitle}>Enter Venue PIN</Text>
@@ -339,61 +433,107 @@ export default function ScoreEntryScreen() {
             <AppButton label="Unlock Score Entry" onPress={handleValidatePin} />
           </AppCard>
         </View>
-      ) : (
-        <ScrollView contentContainerStyle={styles.content}>
-          <Text style={styles.historyText}>Game history: {gameHistory || 'No completed games yet'}</Text>
+      </SafeAreaView>
+    );
+  }
 
-          <View style={styles.scoreGrid}>
-            <ScoreInput
-              label={match.player1Name}
-              score={activeGame.p1Score}
-              isServing={activeServer === 'p1' || activeGame.currentServer === 'p1'}
-              onTapCard={() => void handleScoreChange('p1', 1)}
-              onIncrease={() => void handleScoreChange('p1', 1)}
-              disabled={!!pendingWinnerId || activeGame.winner !== null}
-              onSetServer={() => setActiveServer('p1')}
-            />
-            <ScoreInput
-              label={match.player2Name}
-              score={activeGame.p2Score}
-              isServing={activeServer === 'p2' || activeGame.currentServer === 'p2'}
-              onTapCard={() => void handleScoreChange('p2', 1)}
-              onIncrease={() => void handleScoreChange('p2', 1)}
-              disabled={!!pendingWinnerId || activeGame.winner !== null}
-              onSetServer={() => setActiveServer('p2')}
-            />
+  const winnerName =
+    pendingWinnerId === match.player1Id ? match.player1Name : match.player2Name;
+
+  return (
+    <SafeAreaView style={styles.safeArea}>
+      {/* Header — match info + game scores + timer */}
+      <View style={styles.header}>
+        <View style={styles.headerTop}>
+          <View style={styles.headerInfo}>
+            <Text style={styles.headerTitle}>
+              {toCategoryLabel(match.category)} · {toRoundLabel(match.round)}
+            </Text>
+            <Text style={styles.headerSubTitle}>
+              {typeof match.courtNumber === 'number' ? `Court ${match.courtNumber}` : 'Court TBD'}
+            </Text>
           </View>
-
-          {pendingWinnerId ? (
-            <AppButton label="End Match" onPress={handleCompleteMatch} />
+          {matchStartTime ? (
+            <View style={styles.timerBadge}>
+              <Text style={styles.timerText}>{formatElapsed(elapsed)}</Text>
+            </View>
           ) : null}
-        </ScrollView>
-      )}
+        </View>
+        <GameScoreBar
+          scores={match.scores}
+          activeGameIndex={activeGameIndex}
+          gamesToWin={gamesToWin}
+        />
+      </View>
 
-      <AppButton
-        label="Undo"
-        variant="secondary"
-        style={[styles.undoFab, history.length === 0 && styles.undoFabDisabled]}
-        labelStyle={styles.undoLabel}
-        disabled={history.length === 0}
-        onPress={() => void handleUndo()}
+      {/* Score cards — fill remaining viewport, no scrolling */}
+      <View style={styles.scoreArea}>
+        <View style={styles.scoreGrid}>
+          <ScoreInput
+            label={match.player1Name}
+            partnerLabel={isDoubles ? match.partner1Name : undefined}
+            score={activeGame.p1Score}
+            onTapCard={() => void handleScoreChange('p1', 1)}
+            onIncrease={() => void handleScoreChange('p1', 1)}
+            disabled={!!pendingWinnerId || activeGame.winner !== null}
+            isServing={activeServer === 'p1'}
+            onSetServer={() => setActiveServer('p1')}
+            serviceCourt={activeServer === 'p1' ? serviceCourt : undefined}
+            isDeuce={isDeuceState}
+          />
+          <ScoreInput
+            label={match.player2Name}
+            partnerLabel={isDoubles ? match.partner2Name : undefined}
+            score={activeGame.p2Score}
+            onTapCard={() => void handleScoreChange('p2', 1)}
+            onIncrease={() => void handleScoreChange('p2', 1)}
+            disabled={!!pendingWinnerId || activeGame.winner !== null}
+            isServing={activeServer === 'p2'}
+            onSetServer={() => setActiveServer('p2')}
+            serviceCourt={activeServer === 'p2' ? serviceCourt : undefined}
+            isDeuce={isDeuceState}
+          />
+        </View>
+      </View>
+
+      {/* Fixed bottom bar — undo + end match */}
+      <View style={styles.bottomBar}>
+        {pendingWinnerId ? (
+          <AppButton label="End Match" onPress={handleCompleteMatch} style={styles.bottomButton} />
+        ) : null}
+        <AppButton
+          label="Undo"
+          variant="secondary"
+          disabled={history.length === 0}
+          onPress={() => void handleUndo()}
+          style={[styles.bottomButtonSmall, history.length === 0 && styles.bottomButtonDisabled]}
+          labelStyle={styles.undoLabel}
+        />
+      </View>
+
+      {/* BWF Interval Timer */}
+      <IntervalTimer
+        visible={intervalType !== null}
+        type={intervalType ?? 'mid-game'}
+        durationSeconds={intervalType === 'between-games' ? 120 : 60}
+        onDismiss={handleDismissInterval}
+        message={intervalMessage}
       />
 
+      {/* Celebration modal */}
       <Modal
         visible={showCelebrationModal}
         transparent
         animationType="fade"
         onRequestClose={() => setShowCelebrationModal(false)}
       >
-        <View style={[styles.modalOverlay, { backgroundColor: 'rgba(15, 23, 42, 0.95)' }]}>
-          <Text style={{ fontSize: 80, marginBottom: 20 }}>🏆</Text>
-          <Text style={[styles.modalTitle, { color: '#F8FAFC', fontSize: 32, textAlign: 'center' }]}>
-            Match Complete!
+        <View style={[styles.modalOverlay, styles.celebrationOverlay]}>
+          <Text style={styles.celebrationEmoji}>🏆</Text>
+          <Text style={styles.celebrationTitle}>Match Complete!</Text>
+          <Text style={styles.celebrationMessage}>
+            {winnerName} has won the match.
           </Text>
-          <Text style={[styles.modalMessage, { color: '#94A3B8', fontSize: 18, textAlign: 'center', marginBottom: 24 }]}>
-            {pendingWinnerId === match.player1Id ? match.player1Name : match.player2Name} has won the match.
-          </Text>
-          <View style={[styles.modalActions, { width: '100%', maxWidth: 400 }]}>
+          <View style={styles.modalActions}>
             <AppButton
               variant="secondary"
               label="Undo Last Point"
@@ -415,6 +555,7 @@ export default function ScoreEntryScreen() {
         </View>
       </Modal>
 
+      {/* End match confirmation */}
       <Modal
         visible={showEndMatchModal}
         transparent
@@ -424,7 +565,9 @@ export default function ScoreEntryScreen() {
         <View style={styles.modalOverlay}>
           <AppCard style={styles.modalCard}>
             <Text style={styles.modalTitle}>End Match?</Text>
-            <Text style={styles.modalMessage}>Confirm the final result. This will lock the match and update the bracket.</Text>
+            <Text style={styles.modalMessage}>
+              Confirm the final result. This will lock the match and update the bracket.
+            </Text>
             <View style={styles.modalActions}>
               <AppButton variant="secondary" label="Cancel" onPress={() => setShowEndMatchModal(false)} style={styles.flex1} />
               <AppButton label="Confirm" onPress={() => void handleConfirmEndMatch()} style={styles.flex1} />
@@ -436,6 +579,10 @@ export default function ScoreEntryScreen() {
   );
 }
 
+// ---------------------------------------------------------------------------
+// Styles
+// ---------------------------------------------------------------------------
+
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
@@ -446,6 +593,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     padding: 24,
+    backgroundColor: theme.colors.background,
   },
   errorText: {
     color: '#B91C1C',
@@ -461,58 +609,95 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     fontSize: 14,
   },
+
+  // Header
   header: {
-    paddingHorizontal: 16,
-    paddingVertical: 14,
-    backgroundColor: '#0B1220',
+    paddingHorizontal: 12,
+    paddingTop: 8,
+    paddingBottom: 10,
+    backgroundColor: 'rgba(11, 18, 32, 0.95)',
     borderBottomWidth: 1,
-    borderBottomColor: '#1E293B',
+    borderBottomColor: 'rgba(255, 255, 255, 0.06)',
+    gap: 8,
+  },
+  headerTop: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  headerInfo: {
+    flex: 1,
+    gap: 1,
   },
   headerTitle: {
     color: '#E2E8F0',
     fontWeight: '800',
-    fontSize: 18,
+    fontSize: 15,
+    letterSpacing: 0.3,
   },
   headerSubTitle: {
-    color: '#94A3B8',
+    color: '#64748B',
     fontWeight: '600',
-    marginTop: 2,
+    fontSize: 13,
   },
-  content: {
-    padding: 16,
-    paddingBottom: 120,
-    gap: 14,
+  timerBadge: {
+    backgroundColor: 'rgba(59, 130, 246, 0.12)',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(59, 130, 246, 0.3)',
+    paddingHorizontal: 10,
+    paddingVertical: 4,
   },
-  historyText: {
-    color: '#334155',
-    fontWeight: '600',
-    fontSize: 14,
+  timerText: {
+    color: '#60A5FA',
+    fontWeight: '900',
+    fontSize: 16,
+    fontVariant: ['tabular-nums'],
+    letterSpacing: 1,
+  },
+
+  // Score area — fills remaining space
+  scoreArea: {
+    flex: 1,
+    padding: 10,
   },
   scoreGrid: {
+    flex: 1,
     flexDirection: 'row',
-    gap: 12,
+    gap: 10,
   },
-  undoFab: {
-    position: 'absolute',
-    right: 18,
-    bottom: 18,
-    borderRadius: 999,
-    minWidth: 84,
-    minHeight: 48,
+
+  // Bottom bar — fixed to bottom
+  bottomBar: {
+    flexDirection: 'row',
+    gap: 10,
+    paddingHorizontal: 12,
+    paddingTop: 10,
+    paddingBottom: 16,
+    backgroundColor: 'rgba(11, 18, 32, 0.95)',
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(255, 255, 255, 0.06)',
+    ...(typeof window !== 'undefined' && {
+      backdropFilter: 'blur(16px)',
+    }),
+  },
+  bottomButton: {
+    flex: 1,
+  },
+  bottomButtonSmall: {
+    minWidth: 80,
+    flex: 0,
     paddingHorizontal: 20,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: theme.colors.surface,
-    borderColor: theme.colors.border,
-    borderWidth: 1,
   },
-  undoFabDisabled: {
+  bottomButtonDisabled: {
     opacity: 0.35,
   },
   undoLabel: {
     color: theme.colors.text,
     fontWeight: '800',
   },
+
+  // Modals
   modalOverlay: {
     flex: 1,
     backgroundColor: 'rgba(0,0,0,0.6)',
@@ -522,6 +707,26 @@ const styles = StyleSheet.create({
     ...(typeof window !== 'undefined' && {
       backdropFilter: 'blur(4px)',
     }),
+  },
+  celebrationOverlay: {
+    backgroundColor: 'rgba(15, 23, 42, 0.95)',
+  },
+  celebrationEmoji: {
+    fontSize: 72,
+    marginBottom: 12,
+  },
+  celebrationTitle: {
+    color: '#F8FAFC',
+    fontSize: 28,
+    fontWeight: '900',
+    textAlign: 'center',
+  },
+  celebrationMessage: {
+    color: '#94A3B8',
+    fontSize: 17,
+    fontWeight: '600',
+    textAlign: 'center',
+    marginBottom: 20,
   },
   modalCard: {
     width: '100%',
@@ -543,12 +748,18 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     gap: 12,
     marginTop: 8,
+    width: '100%',
+    maxWidth: 400,
   },
   flex1: {
     flex: 1,
   },
+
+  // PIN screen
   pinContainer: {
-    margin: 16,
+    flex: 1,
+    justifyContent: 'center',
+    padding: 16,
   },
   pinCard: {
     gap: 12,
