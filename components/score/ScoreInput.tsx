@@ -3,6 +3,7 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 import Animated, {
   useAnimatedStyle,
   useSharedValue,
+  withRepeat,
   withSequence,
   withSpring,
   withTiming,
@@ -15,12 +16,15 @@ type ScoreInputProps = {
   score: number;
   onTapCard: () => void;
   onIncrease: () => void;
-  onDecrease: () => void;
+  disabled?: boolean;
+  isServing?: boolean;
+  onSetServer?: () => void;
 };
 
-export function ScoreInput({ label, score, onTapCard, onIncrease, onDecrease }: ScoreInputProps) {
+export function ScoreInput({ label, score, onTapCard, onIncrease, disabled, isServing, onSetServer }: ScoreInputProps) {
   const scale = useSharedValue(1);
   const scoreScale = useSharedValue(1);
+  const servePulse = useSharedValue(1);
 
   useEffect(() => {
     // Trigger pop animation when score changes
@@ -30,50 +34,60 @@ export function ScoreInput({ label, score, onTapCard, onIncrease, onDecrease }: 
     );
   }, [score, scoreScale]);
 
+  useEffect(() => {
+    if (isServing) {
+      servePulse.value = withRepeat(withTiming(0.4, { duration: 800 }), -1, true);
+    } else {
+      servePulse.value = 1;
+    }
+  }, [isServing, servePulse]);
+
   const handlePressIn = () => {
+    if (disabled) return;
     scale.value = withSpring(0.97, { damping: 15, stiffness: 300 });
   };
 
   const handlePressOut = () => {
+    if (disabled) return;
     scale.value = withSpring(1, { damping: 15, stiffness: 300 });
   };
 
   const animatedCardStyle = useAnimatedStyle(() => ({
     transform: [{ scale: scale.value }],
+    opacity: disabled ? 0.7 : 1,
   }));
 
   const animatedScoreStyle = useAnimatedStyle(() => ({
     transform: [{ scale: scoreScale.value }],
   }));
 
+  const animatedServeStyle = useAnimatedStyle(() => ({
+    opacity: servePulse.value,
+  }));
+
   return (
     <View style={styles.container}>
       <AnimatedPressable
-        style={[styles.card, animatedCardStyle]}
-        onPress={onTapCard}
+        style={[styles.card, animatedCardStyle, isServing && styles.cardServing]}
+        onPress={disabled ? undefined : onTapCard}
         onPressIn={handlePressIn}
         onPressOut={handlePressOut}
       >
-        <Text style={styles.label}>{label}</Text>
+        <Pressable style={styles.headerRow} onPress={disabled ? undefined : onSetServer}>
+          {isServing && <Animated.View style={[styles.servingDot, animatedServeStyle]} />}
+          <Text style={styles.label}>{label}</Text>
+        </Pressable>
         <Animated.Text style={[styles.score, animatedScoreStyle]}>{score}</Animated.Text>
       </AnimatedPressable>
 
       <View style={styles.controlsRow}>
         <AnimatedPressable
-          style={[styles.controlButton, styles.decreaseButton]}
-          onPress={onDecrease}
+          style={[styles.controlButton, styles.increaseButton, disabled && styles.controlButtonDisabled]}
+          onPress={disabled ? undefined : onIncrease}
           onPressIn={handlePressIn}
           onPressOut={handlePressOut}
         >
-          <Text style={styles.controlLabel}>-1</Text>
-        </AnimatedPressable>
-        <AnimatedPressable
-          style={[styles.controlButton, styles.increaseButton]}
-          onPress={onIncrease}
-          onPressIn={handlePressIn}
-          onPressOut={handlePressOut}
-        >
-          <Text style={styles.controlLabel}>+1</Text>
+          <Text style={styles.controlLabel}>+1 point</Text>
         </AnimatedPressable>
       </View>
     </View>
@@ -100,6 +114,30 @@ const styles = StyleSheet.create({
     ...(typeof window !== 'undefined' && {
       backdropFilter: 'blur(16px)',
       boxShadow: '0 8px 32px 0 rgba(0, 0, 0, 0.3)',
+    }),
+  },
+  cardServing: {
+    borderColor: 'rgba(16, 185, 129, 0.4)',
+    backgroundColor: 'rgba(30, 41, 59, 0.8)',
+    ...(typeof window !== 'undefined' && {
+      boxShadow: '0 8px 32px 0 rgba(16, 185, 129, 0.15)',
+    }),
+  },
+  headerRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    paddingVertical: 4,
+    paddingHorizontal: 8,
+    borderRadius: 8,
+  },
+  servingDot: {
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+    backgroundColor: '#10B981',
+    ...(typeof window !== 'undefined' && {
+      boxShadow: '0 0 8px #10B981',
     }),
   },
   label: {
@@ -133,15 +171,17 @@ const styles = StyleSheet.create({
       boxShadow: '0 4px 12px 0 rgba(0, 0, 0, 0.2)',
     }),
   },
-  decreaseButton: {
-    backgroundColor: 'rgba(239, 68, 68, 0.8)',
-    borderWidth: 1,
-    borderColor: 'rgba(239, 68, 68, 0.5)',
-  },
   increaseButton: {
     backgroundColor: 'rgba(16, 185, 129, 0.8)',
     borderWidth: 1,
     borderColor: 'rgba(16, 185, 129, 0.5)',
+  },
+  controlButtonDisabled: {
+    backgroundColor: 'rgba(100, 116, 139, 0.5)',
+    borderColor: 'rgba(100, 116, 139, 0.3)',
+    ...(typeof window !== 'undefined' && {
+      boxShadow: 'none',
+    }),
   },
   controlLabel: {
     color: '#FFFFFF',

@@ -4,14 +4,13 @@ import type { ComponentProps } from 'react';
 import { useEffect, useState } from 'react';
 import {
   ActivityIndicator,
-  Alert,
   Image,
   SafeAreaView,
   ScrollView,
   StyleSheet,
   Text,
   View,
-  useWindowDimensions,
+  useWindowDimensions
 } from 'react-native';
 
 import { AppButton } from '@/components/ui/AppButton';
@@ -43,6 +42,7 @@ export default function RegisterScreen() {
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [formError, setFormError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const { width } = useWindowDimensions();
   const isWide = width >= 980;
@@ -54,8 +54,9 @@ export default function RegisterScreen() {
   }, [loading, user]);
 
   const handleRegister = async () => {
+    setFormError(null);
     if (!name.trim() || !email.trim() || !password.trim()) {
-      Alert.alert('Missing fields', 'Enter name, email, and password.');
+      setFormError('Please enter name, email, and password.');
       return;
     }
 
@@ -137,7 +138,7 @@ export default function RegisterScreen() {
               onChangeText={setPassword}
               placeholder="Create a password"
             />
-            {error ? <Text style={styles.error}>{error}</Text> : null}
+            {error || formError ? <Text style={styles.error}>{error || formError}</Text> : null}
             <AppButton
               label={submitting ? 'Creating...' : 'Create Account'}
               disabled={submitting}
