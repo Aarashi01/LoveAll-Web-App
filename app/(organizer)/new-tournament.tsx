@@ -49,6 +49,7 @@ export default function NewTournamentScreen() {
   const [venuePin, setVenuePin] = useState(randomPin());
   const [submitting, setSubmitting] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
+  const [fieldErrors, setFieldErrors] = useState<{ name?: string; categories?: string; groupCount?: string; venuePin?: string }>({});
   const [createdTournamentId, setCreatedTournamentId] = useState<string | null>(null);
 
   const deuceAt = useMemo(() => pointsPerGame - 1, [pointsPerGame]);
@@ -68,26 +69,31 @@ export default function NewTournamentScreen() {
       return;
     }
 
+    const nextFieldErrors: { name?: string; categories?: string; groupCount?: string; venuePin?: string } = {};
+
     if (!name.trim()) {
-      setFormError('Please enter a tournament name.');
-      return;
+      nextFieldErrors.name = 'Please enter a tournament name.';
     }
 
     if (categories.length === 0) {
-      setFormError('Select at least one category.');
-      return;
+      nextFieldErrors.categories = 'Select at least one category.';
     }
 
     const parsedGroupCount = Number(groupCount);
     if (!Number.isFinite(parsedGroupCount) || parsedGroupCount <= 0) {
-      setFormError('Group count must be a positive number.');
-      return;
+      nextFieldErrors.groupCount = 'Group count must be a positive number.';
     }
 
     if (!/^\d{4}$/.test(venuePin)) {
-      setFormError('Venue PIN must be 4 digits.');
+      nextFieldErrors.venuePin = 'Venue PIN must be 4 digits.';
+    }
+
+    if (Object.keys(nextFieldErrors).length > 0) {
+      setFieldErrors(nextFieldErrors);
       return;
     }
+
+    setFieldErrors({});
 
     try {
       setSubmitting(true);
@@ -189,8 +195,12 @@ export default function NewTournamentScreen() {
               <AppInput
                 label="Tournament Name"
                 value={name}
-                onChangeText={setName}
+                onChangeText={(text) => {
+                  setName(text);
+                  if (fieldErrors.name) setFieldErrors((prev) => ({ ...prev, name: undefined }));
+                }}
                 placeholder="Enter Tournament Name"
+                errorText={fieldErrors.name}
               />
 
               <View style={styles.switchRow}>
@@ -202,14 +212,17 @@ export default function NewTournamentScreen() {
             <AppCard>
               <Text style={styles.sectionLabel}>Match Categories</Text>
               <Text style={styles.helperText}>Select all event types available in this tournament.</Text>
-              <View style={styles.optionGrid}>
+              <View style={[styles.optionGrid, fieldErrors.categories ? styles.optionGridError : undefined]}>
                 {CATEGORY_OPTIONS.map((category) => {
                   const selected = categories.includes(category);
                   return (
                     <Pressable
                       key={category}
                       style={[styles.optionCard, selected && styles.optionCardSelected]}
-                      onPress={() => toggleCategory(category)}
+                      onPress={() => {
+                        toggleCategory(category);
+                        if (fieldErrors.categories) setFieldErrors((prev) => ({ ...prev, categories: undefined }));
+                      }}
                     >
                       <Text style={[styles.optionCardText, selected && styles.optionCardTextSelected]}>
                         {toCategoryLabel(category)}
@@ -219,6 +232,7 @@ export default function NewTournamentScreen() {
                   );
                 })}
               </View>
+              {fieldErrors.categories ? <Text style={styles.fieldErrorText}>{fieldErrors.categories}</Text> : null}
             </AppCard>
           </View>
 
@@ -266,8 +280,12 @@ export default function NewTournamentScreen() {
               <AppInput
                 label="Number of Groups"
                 value={groupCount}
-                onChangeText={setGroupCount}
+                onChangeText={(text) => {
+                  setGroupCount(text);
+                  if (fieldErrors.groupCount) setFieldErrors((prev) => ({ ...prev, groupCount: undefined }));
+                }}
                 keyboardType="number-pad"
+                errorText={fieldErrors.groupCount}
               />
 
               <Text style={[styles.fieldLabel, styles.fieldTopGap]}>Knockout Bracket Size</Text>
@@ -294,10 +312,14 @@ export default function NewTournamentScreen() {
                 <AppInput
                   label="Venue Access PIN (4 digits)"
                   value={venuePin}
-                  onChangeText={setVenuePin}
+                  onChangeText={(text) => {
+                    setVenuePin(text);
+                    if (fieldErrors.venuePin) setFieldErrors((prev) => ({ ...prev, venuePin: undefined }));
+                  }}
                   maxLength={4}
                   keyboardType="number-pad"
                   containerStyle={styles.pinInput}
+                  errorText={fieldErrors.venuePin}
                 />
                 <AppButton
                   variant="secondary"
@@ -559,5 +581,18 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     color: theme.colors.text,
     fontWeight: '600',
+  },
+  optionGridError: {
+    borderWidth: 1,
+    borderColor: 'rgba(239, 68, 68, 0.5)',
+    borderRadius: 12,
+    padding: 8,
+    backgroundColor: 'rgba(239, 68, 68, 0.05)',
+  },
+  fieldErrorText: {
+    color: '#EF4444',
+    fontSize: 12,
+    fontWeight: '600',
+    marginTop: -2,
   },
 });

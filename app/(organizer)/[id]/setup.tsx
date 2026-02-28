@@ -82,6 +82,7 @@ export default function TournamentSetupScreen() {
   const [players, setPlayers] = useState<PlayerDocument[]>([]);
   const [playersLoading, setPlayersLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [fieldErrors, setFieldErrors] = useState<{ name?: string; categories?: string }>({});
 
   const [name, setName] = useState('');
   const [gender, setGender] = useState<PlayerGender>('M');
@@ -183,6 +184,7 @@ export default function TournamentSetupScreen() {
     setPartnerId(null);
     setSeeded(false);
     setEditingPlayerId(null);
+    setFieldErrors({});
   };
 
   const toggleCategory = (category: MatchCategory) => {
@@ -195,6 +197,7 @@ export default function TournamentSetupScreen() {
   const handleStartEdit = (player: PlayerDocument) => {
     setError(null);
     setImportSummary(null);
+    setFieldErrors({});
     setEditingPlayerId(player.id);
     setName(player.name);
     setGender(player.gender);
@@ -210,23 +213,29 @@ export default function TournamentSetupScreen() {
     setImportSummary(null);
 
     const trimmedName = name.trim();
+    const nextFieldErrors: { name?: string; categories?: string } = {};
 
     if (!trimmedName) {
-      setError('Player name is required.');
-      return;
+      nextFieldErrors.name = 'Player name is required.';
     }
 
     if (selectedCategories.length === 0) {
-      setError('Select at least one category.');
+      nextFieldErrors.categories = 'Select at least one category.';
+    }
+
+    if (Object.keys(nextFieldErrors).length > 0) {
+      setFieldErrors(nextFieldErrors);
       return;
     }
+
+    setFieldErrors({});
 
     const normalized = normalizeName(trimmedName);
     const duplicate = players.find(
       (player) => normalizeName(player.name) === normalized && player.id !== editingPlayerId,
     );
     if (duplicate) {
-      setError(`"${trimmedName}" already exists in the player list.`);
+      setFieldErrors({ name: `"${trimmedName}" already exists in the player list.` });
       return;
     }
 
@@ -554,8 +563,12 @@ export default function TournamentSetupScreen() {
               <AppInput
                 label="Player Name"
                 value={name}
-                onChangeText={setName}
+                onChangeText={(text) => {
+                  setName(text);
+                  if (fieldErrors.name) setFieldErrors((prev) => ({ ...prev, name: undefined }));
+                }}
                 placeholder="Enter player name"
+                errorText={fieldErrors.name}
               />
 
               <AppInput
@@ -580,8 +593,8 @@ export default function TournamentSetupScreen() {
                 ))}
               </View>
 
-              <Text style={styles.label}>Categories</Text>
-              <View style={styles.chipsWrap}>
+              <Text style={[styles.label, fieldErrors.categories ? styles.labelError : undefined]}>Categories</Text>
+              <View style={[styles.chipsWrap, fieldErrors.categories ? styles.chipsWrapError : undefined]}>
                 {enabledCategories.map((category) => {
                   const selected = selectedCategories.includes(category);
                   const disabled = !isCategoryAllowedForGender(category, gender);
@@ -593,7 +606,10 @@ export default function TournamentSetupScreen() {
                         selected && styles.chipActive,
                         disabled && styles.chipDisabled,
                       ]}
-                      onPress={() => toggleCategory(category)}
+                      onPress={() => {
+                        toggleCategory(category);
+                        if (fieldErrors.categories) setFieldErrors((prev) => ({ ...prev, categories: undefined }));
+                      }}
                       disabled={disabled}
                     >
                       <Text
@@ -609,6 +625,7 @@ export default function TournamentSetupScreen() {
                   );
                 })}
               </View>
+              {fieldErrors.categories ? <Text style={styles.fieldErrorText}>{fieldErrors.categories}</Text> : null}
 
               <View style={styles.switchRow}>
                 <Text style={styles.label}>Seeded Player</Text>
@@ -1003,5 +1020,21 @@ const styles = StyleSheet.create({
   },
   cancelButton: {
     minWidth: 100,
+  },
+  labelError: {
+    color: '#EF4444',
+  },
+  chipsWrapError: {
+    borderWidth: 1,
+    borderColor: 'rgba(239, 68, 68, 0.5)',
+    borderRadius: 12,
+    padding: 8,
+    backgroundColor: 'rgba(239, 68, 68, 0.05)',
+  },
+  fieldErrorText: {
+    color: '#EF4444',
+    fontSize: 12,
+    fontWeight: '600',
+    marginTop: -2,
   },
 });
