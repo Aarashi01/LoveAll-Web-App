@@ -105,7 +105,7 @@ export default function ResultsScreen() {
         </View>
 
         <View style={isWide ? styles.splitLayout : undefined}>
-          <View style={styles.leftColumn}>
+          <View style={[styles.leftColumn, isWide && { flex: 2 }]}>
             <AppCard>
               <Text style={styles.summaryLabel}>Completed matches</Text>
               <Text style={styles.summaryValue}>{completedMatches.length}</Text>
@@ -148,7 +148,7 @@ export default function ResultsScreen() {
             ) : null}
           </View>
 
-          <View style={styles.rightColumn}>
+          <View style={[styles.rightColumn, isWide && { flex: 3 }]}>
             <AppCard style={styles.matchesCard}>
               <View style={styles.matchesHeader}>
                 <Text style={styles.sectionTitle}>Completed Match List</Text>
@@ -245,11 +245,9 @@ const styles = StyleSheet.create({
     gap: 24,
   },
   leftColumn: {
-    flex: 2,
     gap: 24,
   },
   rightColumn: {
-    flex: 3,
     gap: 24,
   },
   title: {

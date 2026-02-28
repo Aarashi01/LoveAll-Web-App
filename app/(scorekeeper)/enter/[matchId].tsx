@@ -251,7 +251,9 @@ export default function ScoreEntryScreen() {
       setMatchStartTime(Date.now());
     }
 
-    await updateScore(tournamentId, match.id, activeGameIndex, player, delta);
+    await updateScore(tournamentId, match.id, activeGameIndex, {
+      [`${player}Score`]: player === 'p1' ? nextP1 : nextP2,
+    });
     setHistory((prev) => [...prev.slice(-4), { gameIndex: activeGameIndex, player, delta }]);
 
     if (delta === 1) {
@@ -281,8 +283,6 @@ export default function ScoreEntryScreen() {
       ...updatedScores[activeGameIndex],
       p1Score: nextP1,
       p2Score: nextP2,
-      currentServer: nextServer,
-      sidesSwapped,
       winner,
     };
 
@@ -327,7 +327,7 @@ export default function ScoreEntryScreen() {
 
     updatedScores[last.gameIndex] = {
       ...targetGame,
-      [scoreField]: Math.max(0, targetGame[scoreField] + reverseDelta),
+      [`${last.player}Score`]: Math.max(0, targetGame[`${last.player}Score` as keyof ScoreGame] as number + reverseDelta),
       winner: null,
       endedAt: null,
     };

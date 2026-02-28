@@ -487,7 +487,7 @@ export default function TournamentScheduleScreen() {
         ) : null}
 
         <View style={isWide ? styles.splitLayout : undefined}>
-          <View style={styles.leftColumn}>
+          <View style={[styles.leftColumn, isWide && { flex: 2 }]}>
             <AppCard>
               <Text style={styles.sectionTitle}>Overview</Text>
               <View style={styles.metricsRow}>
@@ -589,7 +589,7 @@ export default function TournamentScheduleScreen() {
             </AppCard>
           </View>
 
-          <View style={styles.rightColumn}>
+          <View style={[styles.rightColumn, isWide && { flex: 3 }]}>
             <AppCard style={styles.matchesCard}>
               <View style={styles.matchesHeader}>
                 <Text style={styles.sectionTitle}>Matches ({filteredMatches.length})</Text>
@@ -704,11 +704,9 @@ const styles = StyleSheet.create({
     gap: 24,
   },
   leftColumn: {
-    flex: 2,
     gap: 24,
   },
   rightColumn: {
-    flex: 3,
     gap: 24,
   },
   title: {
