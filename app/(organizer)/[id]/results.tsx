@@ -1,6 +1,15 @@
-import { useMemo, useState } from 'react';
-import { ActivityIndicator, Alert, SafeAreaView, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useLocalSearchParams } from 'expo-router';
+import { useMemo, useState } from 'react';
+import {
+  ActivityIndicator,
+  Alert,
+  SafeAreaView,
+  ScrollView,
+  StyleSheet,
+  Text,
+  View,
+  useWindowDimensions,
+} from 'react-native';
 
 import { AppButton } from '@/components/ui/AppButton';
 import { AppCard } from '@/components/ui/AppCard';
@@ -18,6 +27,9 @@ export default function ResultsScreen() {
 
   const [activeAction, setActiveAction] = useState<ExportAction>(null);
   const [lastPdfUri, setLastPdfUri] = useState<string | null>(null);
+
+  const { width } = useWindowDimensions();
+  const isWide = width >= 1024;
 
   const completedMatches = useMemo(
     () => matches.filter((match) => match.status === 'completed'),
@@ -69,71 +81,96 @@ export default function ResultsScreen() {
 
   return (
     <SafeAreaView style={styles.safeArea}>
+      <View pointerEvents="none" style={styles.backgroundLayer}>
+        <View style={[styles.glowOrb, styles.glowOrbTop]} />
+        <View style={[styles.glowOrb, styles.glowOrbBottom]} />
+      </View>
       <ScrollView contentContainerStyle={styles.content}>
-        <Text style={styles.title}>Results Export</Text>
-        <Text style={styles.subTitle}>{tournament.name}</Text>
-
-        <AppCard>
-          <Text style={styles.summaryLabel}>Completed matches</Text>
-          <Text style={styles.summaryValue}>{completedMatches.length}</Text>
-        </AppCard>
-
-        <View style={styles.actionsRow}>
-          <AppButton
-            label={activeAction === 'export' ? 'Generating...' : 'Export PDF'}
-            disabled={isBusy}
-            onPress={() =>
-              void runWithGuard('export', async () => generateResultsPDF(tournament, matches))
-            }
-          />
-          <AppButton
-            variant="secondary"
-            label={activeAction === 'share' ? 'Opening...' : 'Share'}
-            disabled={isBusy}
-            onPress={() =>
-              void runWithGuard('share', async () => shareResultsPDF(tournament, matches))
-            }
-          />
-          <AppButton
-            variant="secondary"
-            label={activeAction === 'email' ? 'Opening...' : 'Email'}
-            disabled={isBusy}
-            onPress={() =>
-              void runWithGuard('email', async () => emailResultsPDF(tournament, matches))
-            }
-          />
+        <View style={styles.header}>
+          <Text style={styles.title}>Results Export</Text>
+          <Text style={styles.subTitle}>{tournament.name}</Text>
         </View>
 
-        {lastPdfUri ? (
-          <AppCard style={styles.uriCard}>
-            <Text style={styles.uriLabel}>Last generated PDF</Text>
-            <Text style={styles.uriValue}>{lastPdfUri}</Text>
-          </AppCard>
-        ) : null}
-
-        <Text style={styles.sectionTitle}>Completed Match List</Text>
-        {completedMatches.length === 0 ? (
-          <Text style={styles.emptyText}>No completed matches yet.</Text>
-        ) : (
-          completedMatches.map((match) => (
-            <AppCard key={match.id}>
-              <Text style={styles.matchTitle}>
-                {toCategoryLabel(match.category)} - {toRoundLabel(match.round)}
-              </Text>
-              <Text style={styles.matchBody}>
-                {match.player1Name} vs {match.player2Name}
-              </Text>
-              <Text style={styles.matchWinner}>
-                Winner:{' '}
-                {match.winnerId === match.player1Id
-                  ? match.player1Name
-                  : match.winnerId === match.player2Id
-                    ? match.player2Name
-                    : 'TBD'}
-              </Text>
+        <View style={isWide ? styles.splitLayout : undefined}>
+          <View style={styles.leftColumn}>
+            <AppCard>
+              <Text style={styles.summaryLabel}>Completed matches</Text>
+              <Text style={styles.summaryValue}>{completedMatches.length}</Text>
             </AppCard>
-          ))
-        )}
+
+            <AppCard>
+              <Text style={styles.sectionTitle}>Export Options</Text>
+              <View style={styles.actionsRow}>
+                <AppButton
+                  label={activeAction === 'export' ? 'Generating...' : 'Export PDF'}
+                  disabled={isBusy}
+                  onPress={() =>
+                    void runWithGuard('export', async () => generateResultsPDF(tournament, matches))
+                  }
+                />
+                <AppButton
+                  variant="secondary"
+                  label={activeAction === 'share' ? 'Opening...' : 'Share'}
+                  disabled={isBusy}
+                  onPress={() =>
+                    void runWithGuard('share', async () => shareResultsPDF(tournament, matches))
+                  }
+                />
+                <AppButton
+                  variant="secondary"
+                  label={activeAction === 'email' ? 'Opening...' : 'Email'}
+                  disabled={isBusy}
+                  onPress={() =>
+                    void runWithGuard('email', async () => emailResultsPDF(tournament, matches))
+                  }
+                />
+              </View>
+            </AppCard>
+
+            {lastPdfUri ? (
+              <AppCard style={styles.uriCard}>
+                <Text style={styles.uriLabel}>Last generated PDF</Text>
+                <Text style={styles.uriValue}>{lastPdfUri}</Text>
+              </AppCard>
+            ) : null}
+          </View>
+
+          <View style={styles.rightColumn}>
+            <AppCard style={styles.matchesCard}>
+              <View style={styles.matchesHeader}>
+                <Text style={styles.sectionTitle}>Completed Match List</Text>
+              </View>
+              {completedMatches.length === 0 ? (
+                <Text style={styles.emptyText}>No completed matches yet.</Text>
+              ) : (
+                <View style={styles.matchGrid}>
+                  {completedMatches.map((match) => (
+                    <View key={match.id} style={styles.matchRow}>
+                      <View style={styles.matchInfo}>
+                        <Text style={styles.matchTitle}>
+                          {toCategoryLabel(match.category)} - {toRoundLabel(match.round)}
+                        </Text>
+                        <Text style={styles.matchBody}>
+                          {match.player1Name} vs {match.player2Name}
+                        </Text>
+                        <Text style={styles.matchWinner}>
+                          Winner:{' '}
+                          <Text style={styles.winnerText}>
+                            {match.winnerId === match.player1Id
+                              ? match.player1Name
+                              : match.winnerId === match.player2Id
+                                ? match.player2Name
+                                : 'TBD'}
+                          </Text>
+                        </Text>
+                      </View>
+                    </View>
+                  ))}
+                </View>
+              )}
+            </AppCard>
+          </View>
+        </View>
       </ScrollView>
     </SafeAreaView>
   );
@@ -144,81 +181,166 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: theme.colors.background,
   },
+  backgroundLayer: {
+    ...StyleSheet.absoluteFillObject,
+    overflow: 'hidden',
+  },
+  glowOrb: {
+    position: 'absolute',
+    borderRadius: theme.radius.full,
+    opacity: 0.15,
+    ...(typeof window !== 'undefined' && {
+      filter: 'blur(100px)',
+    }),
+  },
+  glowOrbTop: {
+    width: 600,
+    height: 600,
+    top: -200,
+    right: -200,
+    backgroundColor: '#3B82F6', // Deep vibrant blue
+  },
+  glowOrbBottom: {
+    width: 500,
+    height: 500,
+    bottom: -150,
+    left: -150,
+    backgroundColor: '#10B981', // Neon emerald
+  },
   centered: {
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    padding: 24,
     backgroundColor: theme.colors.background,
+    padding: 24,
   },
   content: {
-    padding: 16,
-    gap: 12,
-    paddingBottom: 32,
+    paddingHorizontal: 24,
+    paddingTop: 24,
+    paddingBottom: 40,
+    gap: 20,
+    width: '100%',
+    maxWidth: 1200,
+    alignSelf: 'center',
+  },
+  header: {
+    gap: 4,
+  },
+  splitLayout: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 24,
+  },
+  leftColumn: {
+    flex: 2,
+    gap: 24,
+  },
+  rightColumn: {
+    flex: 3,
+    gap: 24,
   },
   title: {
-    fontSize: 24,
+    fontSize: 32,
     fontWeight: '900',
-    color: theme.colors.text,
+    color: '#FFFFFF',
+    letterSpacing: -0.5,
   },
   subTitle: {
-    fontSize: 15,
+    marginTop: -8,
+    color: '#94A3B8',
     fontWeight: '600',
-    color: theme.colors.textMuted,
+    fontSize: 16,
   },
   summaryLabel: {
-    color: theme.colors.textMuted,
-    fontWeight: '700',
+    color: '#94A3B8',
+    fontWeight: '800',
+    letterSpacing: 1.2,
+    textTransform: 'uppercase',
+    fontSize: 13,
   },
   summaryValue: {
-    marginTop: 4,
-    color: theme.colors.text,
+    marginTop: 8,
+    color: '#F8FAFC',
     fontWeight: '900',
-    fontSize: 30,
+    fontSize: 36,
   },
   actionsRow: {
-    gap: 10,
+    gap: 12,
+    marginTop: 8,
   },
   uriCard: {
-    backgroundColor: '#EFF6FF',
+    backgroundColor: 'rgba(59, 130, 246, 0.1)',
     borderWidth: 1,
-    borderColor: '#BFDBFE',
+    borderColor: 'rgba(59, 130, 246, 0.3)',
   },
   uriLabel: {
-    color: '#1E3A8A',
+    color: '#60A5FA',
     fontWeight: '800',
   },
   uriValue: {
-    color: '#1E40AF',
+    color: '#93C5FD',
     fontSize: 12,
     lineHeight: 18,
+    marginTop: 4,
   },
   sectionTitle: {
-    marginTop: 4,
-    color: theme.colors.text,
+    color: '#F8FAFC',
     fontWeight: '900',
     fontSize: 18,
+    letterSpacing: 0.5,
   },
   emptyText: {
-    color: theme.colors.textMuted,
+    color: '#94A3B8',
     fontWeight: '700',
+    fontSize: 15,
     textAlign: 'center',
-    marginTop: 20,
+    padding: 24,
+  },
+  matchesCard: {
+    flex: 1,
+  },
+  matchesHeader: {
+    marginBottom: 8,
+  },
+  matchGrid: {
+    gap: 16,
+  },
+  matchRow: {
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.1)',
+    borderRadius: 14,
+    backgroundColor: 'rgba(15, 23, 42, 0.4)',
+    padding: 16,
+    gap: 12,
+    ...(typeof window !== 'undefined' && {
+      transition: 'all 0.2s ease',
+    }),
+  },
+  matchInfo: {
+    gap: 4,
   },
   matchTitle: {
-    color: theme.colors.text,
+    color: '#F8FAFC',
     fontWeight: '900',
+    fontSize: 16,
   },
   matchBody: {
-    color: '#334155',
-    fontWeight: '700',
+    color: '#60A5FA',
+    fontWeight: '800',
+    fontSize: 15,
   },
   matchWinner: {
-    color: theme.colors.success,
+    color: '#94A3B8',
+    fontWeight: '600',
+    fontSize: 14,
+    marginTop: 2,
+  },
+  winnerText: {
+    color: '#10B981',
     fontWeight: '800',
   },
   errorText: {
-    color: theme.colors.danger,
+    color: '#EF4444',
     fontWeight: '700',
     textAlign: 'center',
   },

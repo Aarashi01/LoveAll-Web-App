@@ -2,20 +2,29 @@ import { type MatchCategory, type MatchRound, type PlayerGender, type Tournament
 
 export const theme = {
   colors: {
-    primary: '#0F766E',
-    primarySoft: '#CCFBF1',
-    accent: '#0369A1',
-    focus: '#0EA5E9',
-    background: '#EEF2FF',
-    surface: '#FFFFFF',
-    surfaceSoft: '#F8FAFC',
-    text: '#0F172A',
-    textMuted: '#475569',
-    border: '#CBD5E1',
-    success: '#15803D',
-    successSoft: '#DCFCE7',
-    danger: '#BE123C',
-    dangerSoft: '#FFE4E6',
+    // Dark mode/Glassmorphism base
+    primary: '#0F172A',      // Slate 900 - Deep background
+    primarySoft: 'rgba(15, 23, 42, 0.7)', // Slate 900 w/ opacity for glass
+
+    // Vibrant Accents
+    accent: '#3B82F6',       // Blue 500 - Electric blue for actions
+    focus: '#10B981',        // Emerald 500 - Neon green for live/focus
+
+    // Surfaces
+    background: '#0B1120',   // Very dark navy/charcoal
+    surface: 'rgba(30, 41, 59, 0.7)',     // Slate 800 w/ opacity
+    surfaceSoft: 'rgba(51, 65, 85, 0.5)', // Slate 700 w/ opacity
+
+    // Typography
+    text: '#F8FAFC',         // Slate 50 - Pristine white for high contrast
+    textMuted: '#94A3B8',    // Slate 400 - Delicate secondary text
+    border: 'rgba(255, 255, 255, 0.1)',   // Very subtle border for glass effect
+
+    // Status
+    success: '#10B981',      // Emerald 500
+    successSoft: 'rgba(16, 185, 129, 0.2)',
+    danger: '#EF4444',       // Red 500
+    dangerSoft: 'rgba(239, 68, 68, 0.2)',
   },
   spacing: {
     xs: 4,

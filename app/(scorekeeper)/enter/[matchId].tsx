@@ -1,25 +1,26 @@
+import { useLocalSearchParams } from 'expo-router';
 import { useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
+  Platform,
   SafeAreaView,
   ScrollView,
   StyleSheet,
   Text,
   View,
 } from 'react-native';
-import { useLocalSearchParams } from 'expo-router';
 
+import { ScoreInput } from '@/components/score/ScoreInput';
 import { AppButton } from '@/components/ui/AppButton';
 import { AppCard } from '@/components/ui/AppCard';
 import { AppInput } from '@/components/ui/AppInput';
-import { ScoreInput } from '@/components/score/ScoreInput';
 import { theme, toCategoryLabel, toRoundLabel } from '@/constants/theme';
 import { useAuth } from '@/hooks/useAuth';
-import { activateScorekeeperSession } from '@/lib/scorekeeper-session';
 import { useTournament } from '@/hooks/useTournament';
 import { completeMatch, subscribeToMatch, updateMatch, updateScore } from '@/lib/firestore/matches';
-import { type MatchDocument, type ScoringRules, type ScoreGame } from '@/lib/firestore/types';
+import { type MatchDocument, type ScoreGame, type ScoringRules } from '@/lib/firestore/types';
+import { activateScorekeeperSession } from '@/lib/scorekeeper-session';
 import { useAppStore } from '@/store/app.store';
 
 type ScoreAction = {
@@ -197,7 +198,18 @@ export default function ScoreEntryScreen() {
   const handleCompleteMatch = async () => {
     if (!tournamentId || !match || !pendingWinnerId) return;
 
-    Alert.alert('End match?', 'Confirm final result and lock this match as completed.', [
+    const message = 'Confirm final result and lock this match as completed.';
+
+    if (Platform.OS === 'web') {
+      const confirmed = globalThis.confirm(message);
+      if (confirmed) {
+        await completeMatch(tournamentId, match.id, pendingWinnerId, match.nextMatchId);
+        setPendingWinnerId(null);
+      }
+      return;
+    }
+
+    Alert.alert('End match?', message, [
       { text: 'Cancel', style: 'cancel' },
       {
         text: 'Confirm',
