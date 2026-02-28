@@ -68,8 +68,7 @@ export async function updateScore(
   tournamentId: string,
   matchId: string,
   gameIndex: number,
-  player: 'p1' | 'p2',
-  delta: 1 | -1,
+  updates: Partial<import('@/lib/firestore/types').ScoreGame>,
 ): Promise<void> {
   const matchRef = doc(db, 'tournaments', tournamentId, 'matches', matchId);
   const snapshot = await getDoc(matchRef);
@@ -79,10 +78,9 @@ export async function updateScore(
   const updatedScores = [...match.scores];
   if (!updatedScores[gameIndex]) return;
 
-  const scoreField = player === 'p1' ? 'p1Score' : 'p2Score';
   updatedScores[gameIndex] = {
     ...updatedScores[gameIndex],
-    [scoreField]: Math.max(0, updatedScores[gameIndex][scoreField] + delta),
+    ...updates,
   };
 
   await updateDoc(matchRef, {

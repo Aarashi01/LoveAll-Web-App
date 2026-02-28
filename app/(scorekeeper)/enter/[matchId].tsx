@@ -281,6 +281,8 @@ export default function ScoreEntryScreen() {
       ...updatedScores[activeGameIndex],
       p1Score: nextP1,
       p2Score: nextP2,
+      currentServer: nextServer,
+      sidesSwapped,
       winner,
     };
 
@@ -321,7 +323,7 @@ export default function ScoreEntryScreen() {
     const reverseDelta = (last.delta * -1) as 1 | -1;
     const updatedScores = match.scores.slice(0, last.gameIndex + 1);
     const targetGame = updatedScores[last.gameIndex];
-    const scoreField = last.player === 'p1' ? 'p1Score' : 'p2Score';
+    if (!targetGame) return;
 
     updatedScores[last.gameIndex] = {
       ...targetGame,
