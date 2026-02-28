@@ -3,6 +3,7 @@ import { useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
+  Platform,
   SafeAreaView,
   ScrollView,
   StyleSheet,
@@ -42,7 +43,11 @@ export default function ResultsScreen() {
   const runWithGuard = async (action: Exclude<ExportAction, null>, task: () => Promise<string>) => {
     if (!tournament) return;
     if (completedMatches.length === 0) {
-      Alert.alert('No completed matches', 'Complete at least one match before exporting results.');
+      if (Platform.OS === 'web') {
+        globalThis.alert('Complete at least one match before exporting results.');
+      } else {
+        Alert.alert('No completed matches', 'Complete at least one match before exporting results.');
+      }
       return;
     }
 
@@ -51,11 +56,19 @@ export default function ResultsScreen() {
       const uri = await task();
       setLastPdfUri(uri);
       if (action === 'export') {
-        Alert.alert('PDF generated', `Saved to:\n${uri}`);
+        if (Platform.OS === 'web') {
+          globalThis.alert(`PDF generated! Saved to:\n${uri}`);
+        } else {
+          Alert.alert('PDF generated', `Saved to:\n${uri}`);
+        }
       }
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Action failed';
-      Alert.alert('Export failed', message);
+      if (Platform.OS === 'web') {
+        globalThis.alert(`Export failed: ${message}`);
+      } else {
+        Alert.alert('Export failed', message);
+      }
     } finally {
       setActiveAction(null);
     }

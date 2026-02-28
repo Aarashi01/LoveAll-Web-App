@@ -4,14 +4,13 @@ import type { ComponentProps } from 'react';
 import { useEffect, useState } from 'react';
 import {
   ActivityIndicator,
-  Alert,
   Image,
   SafeAreaView,
   ScrollView,
   StyleSheet,
   Text,
   View,
-  useWindowDimensions,
+  useWindowDimensions
 } from 'react-native';
 
 import { AppButton } from '@/components/ui/AppButton';
@@ -42,6 +41,7 @@ export default function LoginScreen() {
   const { user, loading, error, login } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [formError, setFormError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const { width } = useWindowDimensions();
   const isWide = width >= 980;
@@ -53,8 +53,9 @@ export default function LoginScreen() {
   }, [loading, user]);
 
   const handleLogin = async () => {
+    setFormError(null);
     if (!email.trim() || !password.trim()) {
-      Alert.alert('Missing fields', 'Enter both email and password.');
+      setFormError('Please enter both email and password.');
       return;
     }
 
@@ -130,7 +131,7 @@ export default function LoginScreen() {
               onChangeText={setPassword}
               placeholder="Enter your password"
             />
-            {error ? <Text style={styles.error}>{error}</Text> : null}
+            {error || formError ? <Text style={styles.error}>{error || formError}</Text> : null}
             <AppButton
               label={submitting ? 'Signing In...' : 'Sign In'}
               disabled={submitting}
