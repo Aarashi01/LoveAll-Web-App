@@ -307,8 +307,6 @@ export default function ScoreEntryScreen() {
       ...updatedScores[activeGameIndex],
       p1Score: nextP1,
       p2Score: nextP2,
-      currentServer: nextServer,
-      sidesSwapped,
       winner,
     };
 

@@ -523,32 +523,28 @@ export default function TournamentSetupScreen() {
         {error ? <Text style={styles.errorBanner}>{error}</Text> : null}
         {importSummary ? <Text style={styles.successBanner}>{importSummary}</Text> : null}
 
-        <View style={isWide ? styles.splitLayout : undefined}>
-          <View style={styles.leftColumn}>
-            <AppCard>
-              <Text style={styles.sectionTitle}>Bulk Import (Excel)</Text>
-              <Text style={styles.helpText}>
-                Download a template, fill player rows in Excel, then upload. Import auto-detects singles vs doubles format.
-              </Text>
-              <View style={styles.templateActions}>
-                <AppButton
-                  variant="secondary"
-                  label="Download Singles Template"
-                  onPress={() => void handleDownloadTemplate('singles')}
-                />
-                <AppButton
-                  variant="secondary"
-                  label="Download Doubles Template"
-                  onPress={() => void handleDownloadTemplate('doubles')}
-                />
+        <View style={{ marginBottom: 24 }}>
+          <AppCard>
+            <Text style={styles.sectionTitle}>Roster Overview</Text>
+            <View style={styles.metricsRow}>
+              <View style={styles.metricCard}>
+                <Text style={styles.metricValue}>{players.length}</Text>
+                <Text style={styles.metricLabel}>Players</Text>
               </View>
-              <AppButton
-                label={importing ? 'Importing...' : 'Upload Excel File'}
-                onPress={() => void handleBulkImport()}
-                disabled={importing}
-              />
-            </AppCard>
+              <View style={styles.metricCard}>
+                <Text style={styles.metricValue}>{seededCount}</Text>
+                <Text style={styles.metricLabel}>Seeded</Text>
+              </View>
+              <View style={styles.metricCard}>
+                <Text style={styles.metricValue}>{Math.floor(pairedCount / 2)}</Text>
+                <Text style={styles.metricLabel}>Pairs</Text>
+              </View>
+            </View>
+          </AppCard>
+        </View>
 
+        <View style={isWide ? styles.splitLayout : styles.mobileLayout}>
+          <View style={[styles.leftColumn, isWide && { flex: 1, zIndex: 10 }]}>
             <AppCard>
               <Text style={styles.sectionTitle}>Register Player</Text>
               <Text style={styles.helpText}>
@@ -680,26 +676,33 @@ export default function TournamentSetupScreen() {
                 ) : null}
               </View>
             </AppCard>
+
+            <AppCard>
+              <Text style={styles.sectionTitle}>Bulk Import (Excel)</Text>
+              <Text style={styles.helpText}>
+                Download a template, fill player rows in Excel, then upload. Import auto-detects singles vs doubles format.
+              </Text>
+              <View style={styles.templateActions}>
+                <AppButton
+                  variant="secondary"
+                  label="Download Singles Template"
+                  onPress={() => void handleDownloadTemplate('singles')}
+                />
+                <AppButton
+                  variant="secondary"
+                  label="Download Doubles Template"
+                  onPress={() => void handleDownloadTemplate('doubles')}
+                />
+              </View>
+              <AppButton
+                label={importing ? 'Importing...' : 'Upload Excel File'}
+                onPress={() => void handleBulkImport()}
+                disabled={importing}
+              />
+            </AppCard>
           </View>
 
-          <View style={styles.rightColumn}>
-            <AppCard>
-              <Text style={styles.sectionTitle}>Roster Overview</Text>
-              <View style={styles.metricsRow}>
-                <View style={styles.metricCard}>
-                  <Text style={styles.metricValue}>{players.length}</Text>
-                  <Text style={styles.metricLabel}>Players</Text>
-                </View>
-                <View style={styles.metricCard}>
-                  <Text style={styles.metricValue}>{seededCount}</Text>
-                  <Text style={styles.metricLabel}>Seeded</Text>
-                </View>
-                <View style={styles.metricCard}>
-                  <Text style={styles.metricValue}>{Math.floor(pairedCount / 2)}</Text>
-                  <Text style={styles.metricLabel}>Pairs</Text>
-                </View>
-              </View>
-            </AppCard>
+          <View style={[styles.rightColumn, isWide && { flex: 1, zIndex: 1 }]}>
 
             <AppCard>
               <Text style={styles.sectionTitle}>Registered Players ({filteredPlayers.length})</Text>
@@ -782,12 +785,14 @@ const styles = StyleSheet.create({
     alignItems: 'flex-start',
     gap: 24,
   },
+  mobileLayout: {
+    flexDirection: 'column',
+    gap: 24,
+  },
   leftColumn: {
-    flex: 1,
     gap: 24,
   },
   rightColumn: {
-    flex: 1,
     gap: 24,
   },
   title: {

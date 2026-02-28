@@ -183,7 +183,7 @@ export default function NewTournamentScreen() {
 
 
         <View style={isWide && styles.splitLayout}>
-          <View style={styles.leftColumn}>
+          <View style={[styles.leftColumn, isWide && { flex: 1 }]}>
             <AppCard>
               <Text style={styles.sectionLabel}>Tournament Details</Text>
               <AppInput
@@ -222,7 +222,7 @@ export default function NewTournamentScreen() {
             </AppCard>
           </View>
 
-          <View style={styles.rightColumn}>
+          <View style={[styles.rightColumn, isWide && { flex: 1 }]}>
             <AppCard>
               <Text style={styles.sectionLabel}>Scoring Format</Text>
               <Text style={styles.fieldLabel}>Match Length</Text>
@@ -373,11 +373,9 @@ const styles = StyleSheet.create({
     gap: 24,
   },
   leftColumn: {
-    flex: 1,
     gap: 24,
   },
   rightColumn: {
-    flex: 1,
     gap: 24,
   },
   screenTitle: {
