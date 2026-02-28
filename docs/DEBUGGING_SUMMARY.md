@@ -30,7 +30,8 @@ This document summarizes the 10 issues identified and resolved during the projec
 **Cause**: `Alert.alert` does not display on web and its callbacks don't fire.
 **Fixes**:
 - **New Tournament**: Replaced `Alert.alert` with inline `setFormError()` for visibility.
-- **Scorekeeper & Setup**: Added `Platform.OS === 'web'` check with `globalThis.confirm()` fallbacks.
+- **Login, Register, Scorekeeper PIN**: Added inline `formError` / `pinError` states.
+- **Scorekeeper End Match, Setup Delete, Results Export**: Added `Platform.OS === 'web'` checks with `globalThis.confirm()/alert()` fallbacks.
 
 ### 5. Deprecated Firebase Persistence
 **Issue**: `enableIndexedDbPersistence` was removed in Firebase v12.

@@ -1,14 +1,13 @@
-import { useLocalSearchParams } from 'expo-router';
+import { router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
-  Alert,
-  Platform,
+  Modal,
   SafeAreaView,
   ScrollView,
   StyleSheet,
   Text,
-  View,
+  View
 } from 'react-native';
 
 import { ScoreInput } from '@/components/score/ScoreInput';
@@ -79,9 +78,13 @@ export default function ScoreEntryScreen() {
   const [matchLoading, setMatchLoading] = useState(true);
   const [matchError, setMatchError] = useState<string | null>(null);
   const [pinInput, setPinInput] = useState('');
+  const [pinError, setPinError] = useState<string | null>(null);
   const [pinValidated, setPinValidated] = useState(false);
   const [history, setHistory] = useState<ScoreAction[]>([]);
   const [pendingWinnerId, setPendingWinnerId] = useState<string | null>(null);
+  const [showEndMatchModal, setShowEndMatchModal] = useState(false);
+  const [showCelebrationModal, setShowCelebrationModal] = useState(false);
+  const [activeServer, setActiveServer] = useState<'p1' | 'p2' | null>(null);
 
   useEffect(() => {
     const hasActivePinSession =
@@ -139,6 +142,10 @@ export default function ScoreEntryScreen() {
     await updateScore(tournamentId, match.id, activeGameIndex, player, delta);
     setHistory((prev) => [...prev.slice(-4), { gameIndex: activeGameIndex, player, delta }]);
 
+    if (delta === 1) {
+      setActiveServer(player);
+    }
+
     if (delta === -1) return;
 
     const winner = getGameWinner(nextP1, nextP2, tournament.scoringRules);
@@ -159,6 +166,7 @@ export default function ScoreEntryScreen() {
 
     if (matchWinnerId) {
       setPendingWinnerId(matchWinnerId);
+      setShowCelebrationModal(true);
       await updateMatch(tournamentId, match.id, { scores: updatedScores, status: 'live' });
       return;
     }
@@ -180,46 +188,69 @@ export default function ScoreEntryScreen() {
   const handleUndo = async () => {
     const last = history[history.length - 1];
     if (!last || !tournamentId || !match) return;
+
     const reverseDelta = (last.delta * -1) as 1 | -1;
-    await updateScore(tournamentId, match.id, last.gameIndex, last.player, reverseDelta);
+
+    // Slice off any newly created blank games that occurred after the game we are undoing
+    const updatedScores = match.scores.slice(0, last.gameIndex + 1);
+
+    // Apply the reversed score to the targeted game
+    const targetGame = updatedScores[last.gameIndex];
+    const scoreField = last.player === 'p1' ? 'p1Score' : 'p2Score';
+
+    updatedScores[last.gameIndex] = {
+      ...targetGame,
+      [scoreField]: Math.max(0, targetGame[scoreField] + reverseDelta),
+      winner: null, // Always clear the winner flag if we are undoing a point
+      endedAt: null,
+    };
+
+    if (pendingWinnerId) {
+      setPendingWinnerId(null);
+    }
+
+    // Use updateMatch to apply the fully reconstructed scores array (removes extra games + clears winner)
+    await updateMatch(tournamentId, match.id, { scores: updatedScores, status: 'live' });
     setHistory((prev) => prev.slice(0, -1));
   };
 
   const handleValidatePin = async () => {
     if (!tournament) return;
+    setPinError(null);
     try {
+      if (!pinInput || pinInput.length !== 4) {
+        setPinError('Please enter a 4-digit PIN.');
+        return;
+      }
       await activateScorekeeperSession(pinInput, tournament);
       setPinValidated(true);
-    } catch {
-      Alert.alert('Invalid PIN', 'Please check the 4-digit venue PIN and try again.');
+    } catch (value) {
+      const message = value instanceof Error ? value.message : 'Unknown error';
+      if (message === 'Invalid PIN') {
+        setPinError('Incorrect PIN. Please check the 4-digit venue PIN and try again.');
+      } else {
+        setPinError(`Error activating session: ${message}`);
+      }
     }
   };
 
-  const handleCompleteMatch = async () => {
+  const handleCompleteMatch = () => {
     if (!tournamentId || !match || !pendingWinnerId) return;
+    setShowEndMatchModal(true);
+  };
 
-    const message = 'Confirm final result and lock this match as completed.';
+  const handleConfirmEndMatch = async () => {
+    if (!tournamentId || !match || !pendingWinnerId) return;
+    await completeMatch(tournamentId, match.id, pendingWinnerId, match.nextMatchId);
+    setPendingWinnerId(null);
+    setShowEndMatchModal(false);
 
-    if (Platform.OS === 'web') {
-      const confirmed = globalThis.confirm(message);
-      if (confirmed) {
-        await completeMatch(tournamentId, match.id, pendingWinnerId, match.nextMatchId);
-        setPendingWinnerId(null);
-      }
-      return;
+    // Attempt to route back nicely, which returns the user to the schedule or bracket
+    if (router.canGoBack()) {
+      router.back();
+    } else {
+      router.replace('/');
     }
-
-    Alert.alert('End match?', message, [
-      { text: 'Cancel', style: 'cancel' },
-      {
-        text: 'Confirm',
-        style: 'default',
-        onPress: async () => {
-          await completeMatch(tournamentId, match.id, pendingWinnerId, match.nextMatchId);
-          setPendingWinnerId(null);
-        },
-      },
-    ]);
   };
 
   if (matchLoading || tournamentLoading) {
@@ -261,10 +292,14 @@ export default function ScoreEntryScreen() {
         <View style={styles.pinContainer}>
           <AppCard style={styles.pinCard}>
             <Text style={styles.pinTitle}>Enter Venue PIN</Text>
+            {pinError ? <Text style={styles.errorBanner}>{pinError}</Text> : null}
             <AppInput
               label="Venue PIN"
               value={pinInput}
-              onChangeText={setPinInput}
+              onChangeText={(text) => {
+                setPinInput(text);
+                if (pinError) setPinError(null);
+              }}
               maxLength={4}
               keyboardType="number-pad"
               placeholder="4-digit PIN"
@@ -282,14 +317,18 @@ export default function ScoreEntryScreen() {
               score={activeGame.p1Score}
               onTapCard={() => void handleScoreChange('p1', 1)}
               onIncrease={() => void handleScoreChange('p1', 1)}
-              onDecrease={() => void handleScoreChange('p1', -1)}
+              disabled={!!pendingWinnerId || activeGame.winner !== null}
+              isServing={activeServer === 'p1'}
+              onSetServer={() => setActiveServer('p1')}
             />
             <ScoreInput
               label={match.player2Name}
               score={activeGame.p2Score}
               onTapCard={() => void handleScoreChange('p2', 1)}
               onIncrease={() => void handleScoreChange('p2', 1)}
-              onDecrease={() => void handleScoreChange('p2', -1)}
+              disabled={!!pendingWinnerId || activeGame.winner !== null}
+              isServing={activeServer === 'p2'}
+              onSetServer={() => setActiveServer('p2')}
             />
           </View>
 
@@ -307,6 +346,60 @@ export default function ScoreEntryScreen() {
         disabled={history.length === 0}
         onPress={() => void handleUndo()}
       />
+
+      <Modal
+        visible={showCelebrationModal}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setShowCelebrationModal(false)}
+      >
+        <View style={[styles.modalOverlay, { backgroundColor: 'rgba(15, 23, 42, 0.95)' }]}>
+          <Text style={{ fontSize: 80, marginBottom: 20 }}>🏆</Text>
+          <Text style={[styles.modalTitle, { color: '#F8FAFC', fontSize: 32, textAlign: 'center' }]}>
+            Match Complete!
+          </Text>
+          <Text style={[styles.modalMessage, { color: '#94A3B8', fontSize: 18, textAlign: 'center', marginBottom: 24 }]}>
+            {pendingWinnerId === match.player1Id ? match.player1Name : match.player2Name} has won the match.
+          </Text>
+          <View style={[styles.modalActions, { width: '100%', maxWidth: 400 }]}>
+            <AppButton
+              variant="secondary"
+              label="Undo Last Point"
+              onPress={() => {
+                setShowCelebrationModal(false);
+                void handleUndo();
+              }}
+              style={styles.flex1}
+            />
+            <AppButton
+              label="End Match"
+              onPress={() => {
+                setShowCelebrationModal(false);
+                handleCompleteMatch();
+              }}
+              style={styles.flex1}
+            />
+          </View>
+        </View>
+      </Modal>
+
+      <Modal
+        visible={showEndMatchModal}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setShowEndMatchModal(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <AppCard style={styles.modalCard}>
+            <Text style={styles.modalTitle}>End Match?</Text>
+            <Text style={styles.modalMessage}>Confirm the final result. This will lock the match and update the bracket.</Text>
+            <View style={styles.modalActions}>
+              <AppButton variant="secondary" label="Cancel" onPress={() => setShowEndMatchModal(false)} style={styles.flex1} />
+              <AppButton label="Confirm" onPress={() => void handleConfirmEndMatch()} style={styles.flex1} />
+            </View>
+          </AppCard>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -325,6 +418,16 @@ const styles = StyleSheet.create({
   errorText: {
     color: '#B91C1C',
     fontWeight: '700',
+  },
+  errorBanner: {
+    color: '#EF4444',
+    backgroundColor: 'rgba(239, 68, 68, 0.1)',
+    borderColor: 'rgba(239, 68, 68, 0.3)',
+    borderWidth: 1,
+    borderRadius: 8,
+    padding: 10,
+    fontWeight: '600',
+    fontSize: 14,
   },
   header: {
     paddingHorizontal: 16,
@@ -377,6 +480,40 @@ const styles = StyleSheet.create({
   undoLabel: {
     color: theme.colors.text,
     fontWeight: '800',
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.6)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 24,
+    ...(typeof window !== 'undefined' && {
+      backdropFilter: 'blur(4px)',
+    }),
+  },
+  modalCard: {
+    width: '100%',
+    maxWidth: 400,
+    gap: 16,
+    padding: 24,
+  },
+  modalTitle: {
+    fontSize: 24,
+    fontWeight: '900',
+    color: theme.colors.text,
+  },
+  modalMessage: {
+    fontSize: 16,
+    color: '#94A3B8',
+    lineHeight: 24,
+  },
+  modalActions: {
+    flexDirection: 'row',
+    gap: 12,
+    marginTop: 8,
+  },
+  flex1: {
+    flex: 1,
   },
   pinContainer: {
     margin: 16,
