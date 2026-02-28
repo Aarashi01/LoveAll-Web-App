@@ -1,4 +1,14 @@
+import React, { useEffect } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
+import Animated, {
+  useAnimatedStyle,
+  useSharedValue,
+  withSequence,
+  withSpring,
+  withTiming,
+} from 'react-native-reanimated';
+
+const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 
 type ScoreInputProps = {
   label: string;
@@ -9,20 +19,62 @@ type ScoreInputProps = {
 };
 
 export function ScoreInput({ label, score, onTapCard, onIncrease, onDecrease }: ScoreInputProps) {
+  const scale = useSharedValue(1);
+  const scoreScale = useSharedValue(1);
+
+  useEffect(() => {
+    // Trigger pop animation when score changes
+    scoreScale.value = withSequence(
+      withTiming(1.2, { duration: 100 }),
+      withSpring(1, { damping: 10, stiffness: 200 })
+    );
+  }, [score, scoreScale]);
+
+  const handlePressIn = () => {
+    scale.value = withSpring(0.97, { damping: 15, stiffness: 300 });
+  };
+
+  const handlePressOut = () => {
+    scale.value = withSpring(1, { damping: 15, stiffness: 300 });
+  };
+
+  const animatedCardStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: scale.value }],
+  }));
+
+  const animatedScoreStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: scoreScale.value }],
+  }));
+
   return (
     <View style={styles.container}>
-      <Pressable style={styles.card} onPress={onTapCard}>
+      <AnimatedPressable
+        style={[styles.card, animatedCardStyle]}
+        onPress={onTapCard}
+        onPressIn={handlePressIn}
+        onPressOut={handlePressOut}
+      >
         <Text style={styles.label}>{label}</Text>
-        <Text style={styles.score}>{score}</Text>
-      </Pressable>
+        <Animated.Text style={[styles.score, animatedScoreStyle]}>{score}</Animated.Text>
+      </AnimatedPressable>
 
       <View style={styles.controlsRow}>
-        <Pressable style={[styles.controlButton, styles.decreaseButton]} onPress={onDecrease}>
+        <AnimatedPressable
+          style={[styles.controlButton, styles.decreaseButton]}
+          onPress={onDecrease}
+          onPressIn={handlePressIn}
+          onPressOut={handlePressOut}
+        >
           <Text style={styles.controlLabel}>-1</Text>
-        </Pressable>
-        <Pressable style={[styles.controlButton, styles.increaseButton]} onPress={onIncrease}>
+        </AnimatedPressable>
+        <AnimatedPressable
+          style={[styles.controlButton, styles.increaseButton]}
+          onPress={onIncrease}
+          onPressIn={handlePressIn}
+          onPressOut={handlePressOut}
+        >
           <Text style={styles.controlLabel}>+1</Text>
-        </Pressable>
+        </AnimatedPressable>
       </View>
     </View>
   );
@@ -36,28 +88,36 @@ const styles = StyleSheet.create({
   card: {
     flex: 1,
     minHeight: 220,
-    borderRadius: 16,
-    borderWidth: 2,
-    borderColor: '#CBD5E1',
-    backgroundColor: '#F8FAFC',
+    borderRadius: 24,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.1)',
+    backgroundColor: 'rgba(30, 41, 59, 0.6)',
     alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: 16,
     paddingVertical: 20,
     gap: 8,
+    ...(typeof window !== 'undefined' && {
+      backdropFilter: 'blur(16px)',
+      boxShadow: '0 8px 32px 0 rgba(0, 0, 0, 0.3)',
+    }),
   },
   label: {
     fontSize: 28,
     lineHeight: 34,
     fontWeight: '800',
-    color: '#0F172A',
+    color: '#94A3B8',
     textAlign: 'center',
+    letterSpacing: 1,
   },
   score: {
-    fontSize: 84,
-    lineHeight: 90,
+    fontSize: 110,
+    lineHeight: 110,
     fontWeight: '900',
-    color: '#0F172A',
+    color: '#F8FAFC',
+    textShadowColor: 'rgba(59, 130, 246, 0.5)',
+    textShadowOffset: { width: 0, height: 0 },
+    textShadowRadius: 20,
   },
   controlsRow: {
     flexDirection: 'row',
@@ -67,19 +127,26 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    borderRadius: 12,
-    minHeight: 56,
+    borderRadius: 16,
+    minHeight: 64,
+    ...(typeof window !== 'undefined' && {
+      boxShadow: '0 4px 12px 0 rgba(0, 0, 0, 0.2)',
+    }),
   },
   decreaseButton: {
-    backgroundColor: '#B91C1C',
+    backgroundColor: 'rgba(239, 68, 68, 0.8)',
+    borderWidth: 1,
+    borderColor: 'rgba(239, 68, 68, 0.5)',
   },
   increaseButton: {
-    backgroundColor: '#166534',
+    backgroundColor: 'rgba(16, 185, 129, 0.8)',
+    borderWidth: 1,
+    borderColor: 'rgba(16, 185, 129, 0.5)',
   },
   controlLabel: {
     color: '#FFFFFF',
-    fontWeight: '800',
-    fontSize: 20,
-    lineHeight: 24,
+    fontWeight: '900',
+    fontSize: 24,
+    lineHeight: 28,
   },
 });

@@ -1,5 +1,12 @@
-import { useEffect, useRef } from 'react';
-import { Animated, StyleSheet, Text, View } from 'react-native';
+import { useEffect } from 'react';
+import { StyleSheet, Text, View } from 'react-native';
+import Animated, {
+  useAnimatedStyle,
+  useSharedValue,
+  withRepeat,
+  withSequence,
+  withTiming,
+} from 'react-native-reanimated';
 
 import { type MatchDocument } from '@/lib/firestore/types';
 
@@ -10,23 +17,27 @@ type LiveScoreCardProps = {
 };
 
 export function LiveScoreCard({ match, compact = false, dark = false }: LiveScoreCardProps) {
-  const pulse = useRef(new Animated.Value(1)).current;
+  const pulseOpacity = useSharedValue(1);
 
   useEffect(() => {
     if (match.status !== 'live') {
-      pulse.setValue(1);
+      pulseOpacity.value = 1;
       return;
     }
 
-    const animation = Animated.loop(
-      Animated.sequence([
-        Animated.timing(pulse, { toValue: 0.4, duration: 700, useNativeDriver: true }),
-        Animated.timing(pulse, { toValue: 1, duration: 700, useNativeDriver: true }),
-      ]),
+    pulseOpacity.value = withRepeat(
+      withSequence(
+        withTiming(0.4, { duration: 700 }),
+        withTiming(1, { duration: 700 })
+      ),
+      -1,
+      true
     );
-    animation.start();
-    return () => animation.stop();
-  }, [match.status, pulse]);
+  }, [match.status, pulseOpacity]);
+
+  const animatedDotStyle = useAnimatedStyle(() => ({
+    opacity: pulseOpacity.value,
+  }));
 
   const activeGame =
     match.scores.find((score) => score.winner === null) ??
@@ -35,8 +46,11 @@ export function LiveScoreCard({ match, compact = false, dark = false }: LiveScor
       p2Score: 0,
     };
 
-  const statusDotStyle =
-    match.status === 'live' ? [styles.dot, styles.dotLive] : [styles.dot, styles.dotScheduled];
+  const statusDotStyle = [
+    styles.dot,
+    match.status === 'live' ? styles.dotLive : styles.dotScheduled,
+    animatedDotStyle,
+  ];
 
   return (
     <View style={[styles.card, dark && styles.cardDark, compact && styles.cardCompact]}>
@@ -45,7 +59,7 @@ export function LiveScoreCard({ match, compact = false, dark = false }: LiveScor
           {match.category} - {match.round}
           {typeof match.courtNumber === 'number' ? ` - Court ${match.courtNumber}` : ''}
         </Text>
-        <Animated.View style={[statusDotStyle, match.status === 'live' ? { opacity: pulse } : null]} />
+        <Animated.View style={statusDotStyle} />
       </View>
 
       <View style={styles.playersRow}>
@@ -71,19 +85,29 @@ export function LiveScoreCard({ match, compact = false, dark = false }: LiveScor
 
 const styles = StyleSheet.create({
   card: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 14,
-    padding: 16,
+    backgroundColor: 'rgba(255, 255, 255, 0.8)',
+    borderRadius: 20,
+    padding: 20,
     borderWidth: 1,
-    borderColor: '#E7ECEF',
-    gap: 8,
+    borderColor: 'rgba(255, 255, 255, 0.5)',
+    gap: 12,
+    ...(typeof window !== 'undefined' && {
+      backdropFilter: 'blur(16px)',
+      boxShadow: '0 8px 32px 0 rgba(0, 0, 0, 0.1)',
+      transition: 'all 0.3s ease',
+    }),
   },
   cardCompact: {
-    padding: 12,
+    padding: 16,
+    borderRadius: 16,
+    gap: 8,
   },
   cardDark: {
-    backgroundColor: '#121212',
-    borderColor: '#222222',
+    backgroundColor: 'rgba(15, 23, 42, 0.6)',
+    borderColor: 'rgba(255, 255, 255, 0.1)',
+    ...(typeof window !== 'undefined' && {
+      boxShadow: '0 8px 32px 0 rgba(0, 0, 0, 0.4)',
+    }),
   },
   headerRow: {
     flexDirection: 'row',
@@ -91,9 +115,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   meta: {
-    fontSize: 14,
-    color: '#475569',
-    fontWeight: '600',
+    fontSize: 15,
+    color: '#64748B',
+    fontWeight: '700',
+    letterSpacing: 0.5,
+    textTransform: 'uppercase',
   },
   playersRow: {
     flexDirection: 'row',
@@ -103,25 +129,27 @@ const styles = StyleSheet.create({
   },
   name: {
     flex: 1,
-    fontSize: 24,
+    fontSize: 26,
     color: '#0F172A',
-    fontWeight: '800',
+    fontWeight: '900',
+    letterSpacing: -0.5,
   },
   nameCompact: {
     fontSize: 20,
+    fontWeight: '800',
   },
   score: {
-    fontSize: 72,
-    lineHeight: 78,
+    fontSize: 76,
+    lineHeight: 82,
     color: '#0F172A',
     fontWeight: '900',
-    minWidth: 74,
+    minWidth: 80,
     textAlign: 'right',
   },
   scoreCompact: {
-    fontSize: 52,
-    lineHeight: 58,
-    minWidth: 56,
+    fontSize: 48,
+    lineHeight: 54,
+    minWidth: 54,
   },
   dot: {
     width: 12,
@@ -129,10 +157,13 @@ const styles = StyleSheet.create({
     borderRadius: 999,
   },
   dotLive: {
-    backgroundColor: '#2E7D32',
+    backgroundColor: '#10B981',
+    ...(typeof window !== 'undefined' && {
+      boxShadow: '0 0 12px 2px rgba(16, 185, 129, 0.6)',
+    }),
   },
   dotScheduled: {
-    backgroundColor: '#7A7A7A',
+    backgroundColor: '#64748B',
   },
   textDark: {
     color: '#F8FAFC',

@@ -1,6 +1,6 @@
 import { getApp, getApps, initializeApp } from 'firebase/app';
 import { getAuth } from 'firebase/auth';
-import { enableIndexedDbPersistence, getFirestore } from 'firebase/firestore';
+import { getFirestore, initializeFirestore, persistentLocalCache } from 'firebase/firestore';
 
 const firebaseConfig = {
   apiKey: process.env.EXPO_PUBLIC_FIREBASE_API_KEY ?? '',
@@ -14,10 +14,9 @@ const firebaseConfig = {
 const app = getApps().length > 0 ? getApp() : initializeApp(firebaseConfig);
 
 export const auth = getAuth(app);
-export const db = getFirestore(app);
-
-if (typeof indexedDB !== 'undefined') {
-  enableIndexedDbPersistence(db).catch((error: { code?: string }) => {
-    console.warn('Offline persistence unavailable:', error.code ?? 'unknown');
-  });
-}
+export const db =
+  getApps().length > 1
+    ? getFirestore(app)
+    : initializeFirestore(app, {
+      localCache: persistentLocalCache(),
+    });

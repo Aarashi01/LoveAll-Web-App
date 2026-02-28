@@ -1,3 +1,5 @@
+import { Link, router, useLocalSearchParams } from 'expo-router';
+import { Timestamp } from 'firebase/firestore';
 import { useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
@@ -9,9 +11,8 @@ import {
   StyleSheet,
   Text,
   View,
+  useWindowDimensions,
 } from 'react-native';
-import { Link, router, useLocalSearchParams } from 'expo-router';
-import { Timestamp } from 'firebase/firestore';
 
 import { AppButton } from '@/components/ui/AppButton';
 import { AppCard } from '@/components/ui/AppCard';
@@ -195,6 +196,9 @@ export default function TournamentScheduleScreen() {
   const [activeStatus, setActiveStatus] = useState<'all' | MatchStatus>('all');
   const [busyAction, setBusyAction] = useState<'group' | 'knockout' | null>(null);
   const [notice, setNotice] = useState<ScheduleNotice | null>(null);
+
+  const { width } = useWindowDimensions();
+  const isWide = width >= 1024;
 
   useEffect(() => {
     if (!id) {
@@ -464,9 +468,15 @@ export default function TournamentScheduleScreen() {
 
   return (
     <SafeAreaView style={styles.safeArea}>
+      <View pointerEvents="none" style={styles.backgroundLayer}>
+        <View style={[styles.glowOrb, styles.glowOrbTop]} />
+        <View style={[styles.glowOrb, styles.glowOrbBottom]} />
+      </View>
       <ScrollView contentContainerStyle={styles.content}>
-        <Text style={styles.title}>Schedule Builder</Text>
-        <Text style={styles.meta}>{tournament.name}</Text>
+        <View style={styles.header}>
+          <Text style={styles.title}>Schedule Builder</Text>
+          <Text style={styles.meta}>{tournament.name}</Text>
+        </View>
 
         {notice ? (
           <View style={[styles.notice, notice.type === 'success' ? styles.noticeSuccess : styles.noticeError]}>
@@ -476,142 +486,152 @@ export default function TournamentScheduleScreen() {
           </View>
         ) : null}
 
-        <AppCard>
-          <Text style={styles.sectionTitle}>Overview</Text>
-          <View style={styles.metricsRow}>
-            <View style={styles.metricItem}>
-              <Text style={styles.metricValue}>{players.length}</Text>
-              <Text style={styles.metricLabel}>Players</Text>
-            </View>
-            <View style={styles.metricItem}>
-              <Text style={styles.metricValue}>{matches.length}</Text>
-              <Text style={styles.metricLabel}>Matches</Text>
-            </View>
-            <View style={styles.metricItem}>
-              <Text style={styles.metricValue}>{completedCount}</Text>
-              <Text style={styles.metricLabel}>Completed</Text>
-            </View>
-          </View>
-          <Text style={styles.helperText}>
-            Group: {groupMatches.length} | Knockout: {knockoutMatches.length}
-          </Text>
-          {categoryPlayerStats.map((row) => (
-            <Text key={row.category} style={styles.categoryStat}>
-              {toCategoryLabel(row.category)}: {row.count} players
-            </Text>
-          ))}
-        </AppCard>
-
-        <AppCard>
-          <Text style={styles.sectionTitle}>Generate Fixtures</Text>
-          <View style={styles.inlineInputs}>
-            <AppInput
-              label="Courts"
-              value={courtsCountInput}
-              onChangeText={setCourtsCountInput}
-              keyboardType="number-pad"
-              containerStyle={styles.inlineInput}
-            />
-            <AppInput
-              label="Slot Minutes"
-              value={slotMinutesInput}
-              onChangeText={setSlotMinutesInput}
-              keyboardType="number-pad"
-              containerStyle={styles.inlineInput}
-            />
-          </View>
-
-          <AppButton
-            label={busyAction === 'group' ? 'Generating Group Fixtures...' : 'Generate Group Fixtures'}
-            onPress={() => void handleGenerateGroups()}
-            disabled={busyAction !== null}
-          />
-          <AppButton
-            variant="secondary"
-            label={busyAction === 'knockout' ? 'Generating Knockout Bracket...' : 'Generate Knockout Bracket'}
-            onPress={() => void handleGenerateKnockout()}
-            disabled={busyAction !== null || groupMatches.length === 0}
-          />
-          <Text style={styles.helperText}>
-            Knockout generation uses group standings when available, then fills remaining slots by seeded roster order.
-          </Text>
-        </AppCard>
-
-        <AppCard>
-          <Text style={styles.sectionTitle}>Filters</Text>
-          <Text style={styles.filterLabel}>Category</Text>
-          <View style={styles.filterChips}>
-            <Pressable
-              style={[styles.chip, activeCategory === 'all' && styles.chipActive]}
-              onPress={() => setActiveCategory('all')}
-            >
-              <Text style={[styles.chipText, activeCategory === 'all' && styles.chipTextActive]}>All</Text>
-            </Pressable>
-            {tournament.categories.map((category) => (
-              <Pressable
-                key={category}
-                style={[styles.chip, activeCategory === category && styles.chipActive]}
-                onPress={() => setActiveCategory(category)}
-              >
-                <Text style={[styles.chipText, activeCategory === category && styles.chipTextActive]}>
-                  {toCategoryLabel(category)}
-                </Text>
-              </Pressable>
-            ))}
-          </View>
-
-          <Text style={styles.filterLabel}>Status</Text>
-          <View style={styles.filterChips}>
-            {MATCH_STATUS_OPTIONS.map((status) => (
-              <Pressable
-                key={status}
-                style={[styles.chip, activeStatus === status && styles.chipActive]}
-                onPress={() => setActiveStatus(status)}
-              >
-                <Text style={[styles.chipText, activeStatus === status && styles.chipTextActive]}>
-                  {status === 'all' ? 'All' : status}
-                </Text>
-              </Pressable>
-            ))}
-          </View>
-        </AppCard>
-
-        <AppCard>
-          <Text style={styles.sectionTitle}>Matches ({filteredMatches.length})</Text>
-          {filteredMatches.length === 0 ? (
-            <Text style={styles.emptyText}>No matches match the current filters.</Text>
-          ) : (
-            filteredMatches.map((match) => (
-              <View key={match.id} style={styles.matchRow}>
-                <View style={styles.matchInfo}>
-                  <Text style={styles.matchTitle}>
-                    {toCategoryLabel(match.category)} - {toRoundLabel(match.round)}
-                  </Text>
-                  <Text style={styles.matchPair}>
-                    {match.player1Name} vs {match.player2Name}
-                  </Text>
-                  <Text style={styles.matchMeta}>
-                    {match.status.toUpperCase()} | Court {match.courtNumber ?? '-'} | {matchTimeLabel(match)}
-                  </Text>
+        <View style={isWide ? styles.splitLayout : undefined}>
+          <View style={styles.leftColumn}>
+            <AppCard>
+              <Text style={styles.sectionTitle}>Overview</Text>
+              <View style={styles.metricsRow}>
+                <View style={styles.metricItem}>
+                  <Text style={styles.metricValue}>{players.length}</Text>
+                  <Text style={styles.metricLabel}>Players</Text>
                 </View>
-                <View style={styles.matchActions}>
-                  <AppButton
-                    variant="secondary"
-                    label={match.status === 'live' ? 'Pause' : 'Live'}
-                    onPress={() => void handleToggleLiveStatus(match)}
-                    disabled={match.status === 'completed'}
-                    style={styles.matchActionButton}
-                  />
-                  <AppButton
-                    label="Score"
-                    onPress={() => handleOpenScoreEntry(match.id)}
-                    style={styles.matchActionButton}
-                  />
+                <View style={styles.metricItem}>
+                  <Text style={styles.metricValue}>{matches.length}</Text>
+                  <Text style={styles.metricLabel}>Matches</Text>
+                </View>
+                <View style={styles.metricItem}>
+                  <Text style={styles.metricValue}>{completedCount}</Text>
+                  <Text style={styles.metricLabel}>Completed</Text>
                 </View>
               </View>
-            ))
-          )}
-        </AppCard>
+              <Text style={styles.helperText}>
+                Group: {groupMatches.length} | Knockout: {knockoutMatches.length}
+              </Text>
+              {categoryPlayerStats.map((row) => (
+                <Text key={row.category} style={styles.categoryStat}>
+                  {toCategoryLabel(row.category)}: {row.count} players
+                </Text>
+              ))}
+            </AppCard>
+
+            <AppCard>
+              <Text style={styles.sectionTitle}>Generate Fixtures</Text>
+              <View style={styles.inlineInputs}>
+                <AppInput
+                  label="Courts"
+                  value={courtsCountInput}
+                  onChangeText={setCourtsCountInput}
+                  keyboardType="number-pad"
+                  containerStyle={styles.inlineInput}
+                />
+                <AppInput
+                  label="Slot Minutes"
+                  value={slotMinutesInput}
+                  onChangeText={setSlotMinutesInput}
+                  keyboardType="number-pad"
+                  containerStyle={styles.inlineInput}
+                />
+              </View>
+
+              <AppButton
+                label={busyAction === 'group' ? 'Generating Group Fixtures...' : 'Generate Group Fixtures'}
+                onPress={() => void handleGenerateGroups()}
+                disabled={busyAction !== null}
+              />
+              <AppButton
+                variant="secondary"
+                label={busyAction === 'knockout' ? 'Generating Knockout Bracket...' : 'Generate Knockout Bracket'}
+                onPress={() => void handleGenerateKnockout()}
+                disabled={busyAction !== null || groupMatches.length === 0}
+              />
+              <Text style={styles.helperText}>
+                Knockout generation uses group standings when available, then fills remaining slots by seeded roster order.
+              </Text>
+            </AppCard>
+
+            <AppCard>
+              <Text style={styles.sectionTitle}>Filters</Text>
+              <Text style={styles.filterLabel}>Category</Text>
+              <View style={styles.filterChips}>
+                <Pressable
+                  style={[styles.chip, activeCategory === 'all' && styles.chipActive]}
+                  onPress={() => setActiveCategory('all')}
+                >
+                  <Text style={[styles.chipText, activeCategory === 'all' && styles.chipTextActive]}>All</Text>
+                </Pressable>
+                {tournament.categories.map((category) => (
+                  <Pressable
+                    key={category}
+                    style={[styles.chip, activeCategory === category && styles.chipActive]}
+                    onPress={() => setActiveCategory(category)}
+                  >
+                    <Text style={[styles.chipText, activeCategory === category && styles.chipTextActive]}>
+                      {toCategoryLabel(category)}
+                    </Text>
+                  </Pressable>
+                ))}
+              </View>
+
+              <Text style={styles.filterLabel}>Status</Text>
+              <View style={styles.filterChips}>
+                {MATCH_STATUS_OPTIONS.map((status) => (
+                  <Pressable
+                    key={status}
+                    style={[styles.chip, activeStatus === status && styles.chipActive]}
+                    onPress={() => setActiveStatus(status)}
+                  >
+                    <Text style={[styles.chipText, activeStatus === status && styles.chipTextActive]}>
+                      {status === 'all' ? 'All' : status}
+                    </Text>
+                  </Pressable>
+                ))}
+              </View>
+            </AppCard>
+          </View>
+
+          <View style={styles.rightColumn}>
+            <AppCard style={styles.matchesCard}>
+              <View style={styles.matchesHeader}>
+                <Text style={styles.sectionTitle}>Matches ({filteredMatches.length})</Text>
+              </View>
+              {filteredMatches.length === 0 ? (
+                <Text style={styles.emptyText}>No matches match the current filters.</Text>
+              ) : (
+                <View style={styles.matchGrid}>
+                  {filteredMatches.map((match) => (
+                    <View key={match.id} style={styles.matchRow}>
+                      <View style={styles.matchInfo}>
+                        <Text style={styles.matchTitle}>
+                          {toCategoryLabel(match.category)} - {toRoundLabel(match.round)}
+                        </Text>
+                        <Text style={styles.matchPair}>
+                          {match.player1Name} vs {match.player2Name}
+                        </Text>
+                        <Text style={styles.matchMeta}>
+                          {match.status.toUpperCase()} | Court {match.courtNumber ?? '-'} | {matchTimeLabel(match)}
+                        </Text>
+                      </View>
+                      <View style={styles.matchActions}>
+                        <AppButton
+                          variant="secondary"
+                          label={match.status === 'live' ? 'Pause' : 'Live'}
+                          onPress={() => void handleToggleLiveStatus(match)}
+                          disabled={match.status === 'completed'}
+                          style={styles.matchActionButton}
+                        />
+                        <AppButton
+                          label="Score"
+                          onPress={() => handleOpenScoreEntry(match.id)}
+                          style={styles.matchActionButton}
+                        />
+                      </View>
+                    </View>
+                  ))}
+                </View>
+              )}
+            </AppCard>
+          </View>
+        </View>
 
         <View style={styles.footerActions}>
           <AppButton
@@ -633,89 +653,145 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: theme.colors.background,
   },
+  backgroundLayer: {
+    ...StyleSheet.absoluteFillObject,
+    overflow: 'hidden',
+  },
+  glowOrb: {
+    position: 'absolute',
+    borderRadius: theme.radius.full,
+    opacity: 0.15,
+    ...(typeof window !== 'undefined' && {
+      filter: 'blur(100px)',
+    }),
+  },
+  glowOrbTop: {
+    width: 600,
+    height: 600,
+    top: -200,
+    right: -200,
+    backgroundColor: '#3B82F6', // Deep vibrant blue
+  },
+  glowOrbBottom: {
+    width: 500,
+    height: 500,
+    bottom: -150,
+    left: -150,
+    backgroundColor: '#10B981', // Neon emerald
+  },
   centered: {
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    padding: 24,
     backgroundColor: theme.colors.background,
+    padding: 24,
   },
   content: {
-    padding: 14,
-    gap: 12,
-    paddingBottom: 28,
+    paddingHorizontal: 24,
+    paddingTop: 24,
+    paddingBottom: 40,
+    gap: 20,
+    width: '100%',
+    maxWidth: 1200,
+    alignSelf: 'center',
+  },
+  header: {
+    gap: 4,
+  },
+  splitLayout: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 24,
+  },
+  leftColumn: {
+    flex: 2,
+    gap: 24,
+  },
+  rightColumn: {
+    flex: 3,
+    gap: 24,
   },
   title: {
-    fontSize: 28,
+    fontSize: 32,
     fontWeight: '900',
-    color: theme.colors.text,
+    color: '#FFFFFF',
+    letterSpacing: -0.5,
   },
   meta: {
-    marginTop: -6,
-    color: theme.colors.textMuted,
+    marginTop: -8,
+    color: '#94A3B8',
     fontWeight: '600',
-  },
-  sectionTitle: {
-    color: '#334155',
-    fontWeight: '900',
     fontSize: 16,
   },
+  sectionTitle: {
+    color: '#F8FAFC',
+    fontWeight: '900',
+    fontSize: 18,
+    letterSpacing: 0.5,
+  },
   notice: {
-    borderRadius: 10,
+    borderRadius: 12,
     borderWidth: 1,
-    paddingHorizontal: 10,
-    paddingVertical: 9,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
   },
   noticeSuccess: {
-    backgroundColor: '#DCFCE7',
-    borderColor: '#86EFAC',
+    backgroundColor: 'rgba(16, 185, 129, 0.1)',
+    borderColor: 'rgba(16, 185, 129, 0.3)',
   },
   noticeError: {
-    backgroundColor: '#FEE2E2',
-    borderColor: '#FECACA',
+    backgroundColor: 'rgba(239, 68, 68, 0.1)',
+    borderColor: 'rgba(239, 68, 68, 0.3)',
   },
   noticeText: {
     fontWeight: '700',
+    fontSize: 15,
   },
   noticeTextSuccess: {
-    color: '#166534',
+    color: '#10B981',
   },
   noticeTextError: {
-    color: '#991B1B',
+    color: '#EF4444',
   },
   metricsRow: {
     flexDirection: 'row',
-    gap: 8,
+    gap: 12,
   },
   metricItem: {
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 1,
-    borderColor: theme.colors.border,
-    borderRadius: 10,
-    backgroundColor: theme.colors.surfaceSoft,
-    paddingVertical: 9,
+    borderColor: 'rgba(255, 255, 255, 0.1)',
+    borderRadius: 12,
+    backgroundColor: 'rgba(30, 41, 59, 0.5)',
+    paddingVertical: 16,
+    ...(typeof window !== 'undefined' && {
+      backdropFilter: 'blur(12px)',
+    }),
   },
   metricValue: {
-    color: theme.colors.text,
-    fontSize: 18,
+    color: '#F8FAFC',
+    fontSize: 24,
     fontWeight: '900',
   },
   metricLabel: {
-    color: theme.colors.textMuted,
-    fontSize: 12,
+    color: '#94A3B8',
+    fontSize: 13,
     fontWeight: '700',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+    marginTop: 4,
   },
   helperText: {
-    color: '#475569',
+    color: '#94A3B8',
     fontWeight: '600',
-    fontSize: 12,
+    fontSize: 13,
   },
   categoryStat: {
-    color: '#334155',
+    color: '#E2E8F0',
     fontWeight: '700',
-    fontSize: 13,
+    fontSize: 14,
   },
   inlineInputs: {
     flexDirection: 'row',
@@ -725,9 +801,10 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   filterLabel: {
-    marginTop: 2,
-    color: '#334155',
+    marginTop: 8,
+    color: '#E2E8F0',
     fontWeight: '800',
+    fontSize: 14,
   },
   filterChips: {
     flexDirection: 'row',
@@ -736,46 +813,62 @@ const styles = StyleSheet.create({
   },
   chip: {
     borderWidth: 1,
-    borderColor: '#CBD5E1',
+    borderColor: 'rgba(255, 255, 255, 0.1)',
     borderRadius: 999,
-    paddingHorizontal: 12,
-    paddingVertical: 7,
-    backgroundColor: '#F8FAFC',
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    backgroundColor: 'rgba(30, 41, 59, 0.5)',
   },
   chipActive: {
-    borderColor: '#166534',
-    backgroundColor: '#DCFCE7',
+    borderColor: 'rgba(16, 185, 129, 0.5)',
+    backgroundColor: 'rgba(16, 185, 129, 0.1)',
   },
   chipText: {
-    color: '#334155',
+    color: '#CBD5E1',
     fontWeight: '700',
+    fontSize: 14,
   },
   chipTextActive: {
-    color: '#166534',
+    color: '#10B981',
+    fontWeight: '800',
+  },
+  matchesCard: {
+    flex: 1,
+  },
+  matchesHeader: {
+    marginBottom: 8,
+  },
+  matchGrid: {
+    gap: 16,
   },
   matchRow: {
     borderWidth: 1,
-    borderColor: '#E2E8F0',
-    borderRadius: 10,
-    backgroundColor: '#F8FAFC',
-    padding: 10,
-    gap: 8,
+    borderColor: 'rgba(255, 255, 255, 0.1)',
+    borderRadius: 14,
+    backgroundColor: 'rgba(15, 23, 42, 0.4)',
+    padding: 16,
+    gap: 12,
+    ...(typeof window !== 'undefined' && {
+      transition: 'all 0.2s ease',
+    }),
   },
   matchInfo: {
-    gap: 2,
+    gap: 4,
   },
   matchTitle: {
-    color: '#0F172A',
+    color: '#F8FAFC',
     fontWeight: '900',
+    fontSize: 16,
   },
   matchPair: {
-    color: '#334155',
-    fontWeight: '700',
+    color: '#60A5FA',
+    fontWeight: '800',
+    fontSize: 15,
   },
   matchMeta: {
-    color: '#64748B',
-    fontWeight: '600',
-    fontSize: 12,
+    color: '#94A3B8',
+    fontWeight: '700',
+    fontSize: 13,
   },
   matchActions: {
     flexDirection: 'row',
@@ -785,20 +878,32 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   emptyText: {
-    color: '#64748B',
+    color: '#94A3B8',
     fontWeight: '700',
+    fontSize: 15,
+    textAlign: 'center',
+    padding: 24,
   },
   footerActions: {
-    gap: 8,
+    marginTop: 24,
+    gap: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'flex-end',
   },
   resultsLink: {
-    backgroundColor: '#166534',
+    backgroundColor: theme.colors.focus,
     color: '#FFFFFF',
-    borderRadius: 10,
+    borderRadius: 12,
     textAlign: 'center',
-    paddingVertical: 12,
+    paddingVertical: 14,
+    paddingHorizontal: 24,
     fontWeight: '900',
+    fontSize: 16,
     overflow: 'hidden',
+    ...(typeof window !== 'undefined' && {
+      boxShadow: '0 4px 14px 0 rgba(16, 185, 129, 0.39)',
+    }),
   },
   errorText: {
     color: '#B91C1C',

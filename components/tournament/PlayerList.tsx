@@ -66,14 +66,14 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   emptyText: {
-    color: '#64748B',
+    color: '#94A3B8',
     fontWeight: '700',
   },
   playerRow: {
     borderWidth: 1,
-    borderColor: '#E2E8F0',
+    borderColor: 'rgba(255, 255, 255, 0.1)',
     borderRadius: 10,
-    backgroundColor: '#F8FAFC',
+    backgroundColor: 'rgba(30, 41, 59, 0.5)',
     padding: 10,
     flexDirection: 'row',
     gap: 10,
@@ -88,12 +88,12 @@ const styles = StyleSheet.create({
     fontWeight: '900',
   },
   playerMeta: {
-    color: '#475569',
+    color: '#94A3B8',
     fontWeight: '600',
     fontSize: 12,
   },
   partnerMeta: {
-    color: '#166534',
+    color: '#10B981',
     fontWeight: '700',
     fontSize: 12,
   },
