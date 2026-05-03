@@ -12,7 +12,8 @@
     "deploy:web": "npm run build:web && npm run deploy:hosting",
     "test": "jest",
     "test:watch": "jest --watch",
-    "migrate:remove-pin": "tsx scripts/migrate-remove-pin-system.ts"
+    "migrate:remove-pin": "tsx scripts/migrate-remove-pin-system.ts",
+    "test:rules": "firebase emulators:exec --only firestore --project demo-test 'jest tests/firestore-rules.test.ts --config jest.rules.config.js'"
   },
   "dependencies": {
     "@expo/vector-icons": "^15.0.3",
