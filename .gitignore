@@ -43,3 +43,6 @@ yarn-error.*
 # local env files (all)
 .env
 
+# git worktrees
+.worktrees/
+
