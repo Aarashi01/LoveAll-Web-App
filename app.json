@@ -36,7 +36,8 @@
       "description": "Professional badminton score recorder for tournaments and casual matches"
     },
     "plugins": [
-      "expo-router"
+      "expo-router",
+      ["expo-camera", { "cameraPermission": "Allow access to scan scorekeeper pairing QR codes." }]
     ],
     "experiments": {
       "typedRoutes": true
