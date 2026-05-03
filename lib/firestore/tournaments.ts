@@ -1,5 +1,4 @@
 import {
-  addDoc,
   collection,
   deleteDoc,
   doc,
@@ -8,6 +7,7 @@ import {
   orderBy,
   query,
   serverTimestamp,
+  setDoc,
   updateDoc,
   where,
   type Unsubscribe,
@@ -18,18 +18,22 @@ import { type CreateTournamentInput, type TournamentDocument } from '@/lib/fires
 
 const tournamentsRef = collection(db, 'tournaments');
 
-export async function createTournament(input: CreateTournamentInput): Promise<string> {
+export async function createTournament(
+  input: CreateTournamentInput,
+): Promise<string> {
+  const newRef = doc(tournamentsRef);
   const now = serverTimestamp();
-  const created = await addDoc(tournamentsRef, {
+
+  await setDoc(newRef, {
     ...input,
+    id: newRef.id,
     status: 'draft',
     publicViewEnabled: input.publicViewEnabled ?? false,
     createdAt: now,
     updatedAt: now,
   });
 
-  await updateDoc(doc(db, 'tournaments', created.id), { id: created.id });
-  return created.id;
+  return newRef.id;
 }
 
 export async function getTournamentById(tournamentId: string): Promise<TournamentDocument | null> {

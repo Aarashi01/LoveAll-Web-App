@@ -34,11 +34,6 @@ export interface TournamentDocument {
   updatedAt: FirestoreDate;
 }
 
-/** @deprecated Removed with the PIN system. Schedule for full deletion after migration runs. */
-export interface TournamentPrivateSettings {
-  // Intentionally empty; left for one release cycle only.
-}
-
 export interface CreateTournamentInput {
   slug: string;
   name: string;
