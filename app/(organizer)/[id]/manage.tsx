@@ -1,6 +1,8 @@
 import { router, useLocalSearchParams } from 'expo-router';
 import { Platform, SafeAreaView, StyleSheet, Text, View } from 'react-native';
 
+import { ActiveScorekeepersList } from '@/components/organizer/ActiveScorekeepersList';
+import { PendingScorekeepersCard } from '@/components/organizer/PendingScorekeepersCard';
 import { AppButton } from '@/components/ui/AppButton';
 import { AppCard } from '@/components/ui/AppCard';
 import { theme } from '@/constants/theme';
@@ -66,6 +68,9 @@ export default function TournamentManageScreen() {
             </View>
           </View>
         </AppCard>
+
+        <PendingScorekeepersCard tournamentId={id} />
+        <ActiveScorekeepersList tournamentId={id} />
       </View>
     </SafeAreaView>
   );
