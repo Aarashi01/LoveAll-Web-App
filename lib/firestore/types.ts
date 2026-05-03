@@ -32,7 +32,11 @@ export interface TournamentDocument {
   publicViewEnabled: boolean;
   createdAt: FirestoreDate;
   updatedAt: FirestoreDate;
-  venuePin: string;
+}
+
+/** @deprecated Removed with the PIN system. Schedule for full deletion after migration runs. */
+export interface TournamentPrivateSettings {
+  // Intentionally empty; left for one release cycle only.
 }
 
 export interface CreateTournamentInput {
@@ -44,7 +48,6 @@ export interface CreateTournamentInput {
   groupCount: number;
   knockoutSize: 16 | 8 | 4;
   publicViewEnabled?: boolean;
-  venuePin: string;
 }
 
 export interface PlayerDocument {
@@ -132,3 +135,30 @@ export interface AppUserDocument {
   tournamentIds: string[];
 }
 
+export interface ScorekeeperAccess {
+  tournamentId: string;
+  approvedAt: FirestoreDate;
+  approvedBy: string;       // organizer UID (audit trail)
+  expiresAt: FirestoreDate; // next midnight, capped at +24h by rules
+  deviceLabel: string;
+}
+
+export interface PairingRequest {
+  id: string;
+  scorekeeperUid: string;
+  nonce: string;
+  deviceLabel: string;
+  createdAt: FirestoreDate;
+  expiresAt: FirestoreDate;
+}
+
+/**
+ * Payload encoded into the QR shown by the volunteer.
+ * Kept small — gets URL-safe base64'd into the QR image.
+ */
+export interface PairingQRPayload {
+  v: 1;                  // schema version
+  tid: string;           // tournamentId
+  uid: string;           // scorekeeperUid (anonymous Firebase UID)
+  nonce: string;         // 64-char hex
+}
