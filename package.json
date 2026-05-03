@@ -11,7 +11,8 @@
     "deploy:hosting": "npx firebase-tools deploy --only hosting",
     "deploy:web": "npm run build:web && npm run deploy:hosting",
     "test": "jest",
-    "test:watch": "jest --watch"
+    "test:watch": "jest --watch",
+    "migrate:remove-pin": "tsx scripts/migrate-remove-pin-system.ts"
   },
   "dependencies": {
     "@expo/vector-icons": "^15.0.3",
