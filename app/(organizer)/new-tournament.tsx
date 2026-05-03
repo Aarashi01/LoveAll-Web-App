@@ -32,10 +32,6 @@ function slugify(value: string): string {
     .replace(/-+/g, '-');
 }
 
-function randomPin(): string {
-  return String(Math.floor(1000 + Math.random() * 9000));
-}
-
 export default function NewTournamentScreen() {
   const { user, loading } = useAuth();
   const organizerUser = user && !user.isAnonymous ? user : null;
@@ -46,10 +42,9 @@ export default function NewTournamentScreen() {
   const [groupCount, setGroupCount] = useState('4');
   const [knockoutSize, setKnockoutSize] = useState<16 | 8 | 4>(8);
   const [publicViewEnabled, setPublicViewEnabled] = useState(true);
-  const [venuePin, setVenuePin] = useState(randomPin());
   const [submitting, setSubmitting] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
-  const [fieldErrors, setFieldErrors] = useState<{ name?: string; categories?: string; groupCount?: string; venuePin?: string }>({});
+  const [fieldErrors, setFieldErrors] = useState<{ name?: string; categories?: string; groupCount?: string }>({});
   const [createdTournamentId, setCreatedTournamentId] = useState<string | null>(null);
 
   const deuceAt = useMemo(() => pointsPerGame - 1, [pointsPerGame]);
@@ -69,7 +64,7 @@ export default function NewTournamentScreen() {
       return;
     }
 
-    const nextFieldErrors: { name?: string; categories?: string; groupCount?: string; venuePin?: string } = {};
+    const nextFieldErrors: { name?: string; categories?: string; groupCount?: string } = {};
 
     if (!name.trim()) {
       nextFieldErrors.name = 'Please enter a tournament name.';
@@ -82,10 +77,6 @@ export default function NewTournamentScreen() {
     const parsedGroupCount = Number(groupCount);
     if (!Number.isFinite(parsedGroupCount) || parsedGroupCount <= 0) {
       nextFieldErrors.groupCount = 'Group count must be a positive number.';
-    }
-
-    if (!/^\d{4}$/.test(venuePin)) {
-      nextFieldErrors.venuePin = 'Venue PIN must be 4 digits.';
     }
 
     if (Object.keys(nextFieldErrors).length > 0) {
@@ -114,7 +105,6 @@ export default function NewTournamentScreen() {
         groupCount: parsedGroupCount,
         knockoutSize,
         publicViewEnabled,
-        venuePin,
       });
 
       setCreatedTournamentId(tournamentId);
@@ -308,25 +298,6 @@ export default function NewTournamentScreen() {
                 ))}
               </View>
 
-              <View style={styles.pinRow}>
-                <AppInput
-                  label="Venue Access PIN (4 digits)"
-                  value={venuePin}
-                  onChangeText={(text) => {
-                    setVenuePin(text);
-                    if (fieldErrors.venuePin) setFieldErrors((prev) => ({ ...prev, venuePin: undefined }));
-                  }}
-                  maxLength={4}
-                  keyboardType="number-pad"
-                  containerStyle={styles.pinInput}
-                  errorText={fieldErrors.venuePin}
-                />
-                <AppButton
-                  variant="secondary"
-                  label="Regenerate"
-                  onPress={() => setVenuePin(randomPin())}
-                />
-              </View>
             </AppCard>
           </View>
         </View>
@@ -503,14 +474,6 @@ const styles = StyleSheet.create({
   segmentTextActive: {
     color: '#60A5FA', // Bright Blue
     fontWeight: '800',
-  },
-  pinRow: {
-    flexDirection: 'row',
-    gap: 8,
-    alignItems: 'flex-end',
-  },
-  pinInput: {
-    flex: 1,
   },
   switchRow: {
     marginTop: 8,
