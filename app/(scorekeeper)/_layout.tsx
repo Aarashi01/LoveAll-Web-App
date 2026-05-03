@@ -10,6 +10,7 @@ import {
 } from '@/lib/scorekeeper-pairing';
 import { SessionBanner } from '@/components/scorekeeper/SessionBanner';
 import { SessionExpiredModal } from '@/components/scorekeeper/SessionExpiredModal';
+import { useAppStore } from '@/store/app.store';
 
 /**
  * Wraps every screen under app/(scorekeeper)/. Subscribes to the access
@@ -28,7 +29,7 @@ import { SessionExpiredModal } from '@/components/scorekeeper/SessionExpiredModa
 export default function ScorekeeperLayout() {
   const router = useRouter();
   const segments = useSegments();
-  const [tournamentId] = useState<string | null>(null); // replaced in Task 14
+  const tournamentId = useAppStore((s) => s.scorekeeperCtx.tournamentId);
   const [access, setAccess] = useState<ScorekeeperAccess | null>(null);
   const [revoked, setRevoked] = useState(false);
 

@@ -1,32 +1,23 @@
 import { create } from 'zustand';
 
-type ScorekeeperSession = {
-  active: boolean;
-  pin: string | null;
+/**
+ * Tracks which tournament the active scorekeeper screens belong to.
+ * The actual access state lives in Firestore; this is just routing context
+ * so the (scorekeeper) layout knows which access doc to subscribe to.
+ */
+type ScorekeeperContext = {
   tournamentId: string | null;
 };
 
 type AppState = {
-  scorekeeper: ScorekeeperSession;
-  setScorekeeperSession: (pin: string, tournamentId: string) => void;
-  clearScorekeeperSession: () => void;
-};
-
-const initialSession: ScorekeeperSession = {
-  active: false,
-  pin: null,
-  tournamentId: null,
+  scorekeeperCtx: ScorekeeperContext;
+  setScorekeeperTournament: (tournamentId: string | null) => void;
+  clearScorekeeperContext: () => void;
 };
 
 export const useAppStore = create<AppState>((set) => ({
-  scorekeeper: initialSession,
-  setScorekeeperSession: (pin, tournamentId) =>
-    set({
-      scorekeeper: {
-        active: true,
-        pin,
-        tournamentId,
-      },
-    }),
-  clearScorekeeperSession: () => set({ scorekeeper: initialSession }),
+  scorekeeperCtx: { tournamentId: null },
+  setScorekeeperTournament: (tournamentId) =>
+    set({ scorekeeperCtx: { tournamentId } }),
+  clearScorekeeperContext: () => set({ scorekeeperCtx: { tournamentId: null } }),
 }));
