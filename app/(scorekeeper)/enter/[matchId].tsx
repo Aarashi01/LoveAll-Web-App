@@ -7,7 +7,6 @@ import {
   StyleSheet,
   Text,
   View,
-  useWindowDimensions
 } from 'react-native';
 
 import { GameScoreBar } from '@/components/score/GameScoreBar';
@@ -15,13 +14,10 @@ import { IntervalTimer } from '@/components/score/IntervalTimer';
 import { ScoreInput } from '@/components/score/ScoreInput';
 import { AppButton } from '@/components/ui/AppButton';
 import { AppCard } from '@/components/ui/AppCard';
-import { AppInput } from '@/components/ui/AppInput';
 import { theme, toCategoryLabel, toRoundLabel } from '@/constants/theme';
-import { useAuth } from '@/hooks/useAuth';
 import { useTournament } from '@/hooks/useTournament';
 import { completeMatch, subscribeToMatch, updateMatch, updateScore } from '@/lib/firestore/matches';
 import { type MatchDocument, type ScoreGame, type ScoringRules, type ServiceCourt } from '@/lib/firestore/types';
-import { activateScorekeeperSession } from '@/lib/scorekeeper-session';
 import { useAppStore } from '@/store/app.store';
 
 // ---------------------------------------------------------------------------
@@ -139,17 +135,12 @@ function isDoublesCategory(category: string): boolean {
 
 export default function ScoreEntryScreen() {
   const { matchId, tournamentId } = useLocalSearchParams<{ matchId: string; tournamentId?: string }>();
-  const { user } = useAuth();
   const { tournament, loading: tournamentLoading } = useTournament(tournamentId);
-  const scorekeeper = useAppStore((state) => state.scorekeeper);
-  const { height: windowHeight } = useWindowDimensions();
+  const setScorekeeperTournament = useAppStore((s) => s.setScorekeeperTournament);
 
   const [match, setMatch] = useState<MatchDocument | null>(null);
   const [matchLoading, setMatchLoading] = useState(true);
   const [matchError, setMatchError] = useState<string | null>(null);
-  const [pinInput, setPinInput] = useState('');
-  const [pinError, setPinError] = useState<string | null>(null);
-  const [pinValidated, setPinValidated] = useState(false);
   const [history, setHistory] = useState<ScoreAction[]>([]);
   const [pendingWinnerId, setPendingWinnerId] = useState<string | null>(null);
   const [showEndMatchModal, setShowEndMatchModal] = useState(false);
@@ -178,16 +169,8 @@ export default function ScoreEntryScreen() {
   }, [matchStartTime]);
 
   useEffect(() => {
-    const hasActivePinSession =
-      !!tournamentId &&
-      scorekeeper.active &&
-      scorekeeper.tournamentId === tournamentId &&
-      !!scorekeeper.pin;
-
-    if (hasActivePinSession || user?.isAnonymous) {
-      setPinValidated(true);
-    }
-  }, [scorekeeper.active, scorekeeper.pin, scorekeeper.tournamentId, tournamentId, user?.isAnonymous]);
+    if (tournament?.id) setScorekeeperTournament(tournament.id);
+  }, [tournament?.id, setScorekeeperTournament]);
 
   useEffect(() => {
     if (!tournamentId || !matchId) {
@@ -365,26 +348,6 @@ export default function ScoreEntryScreen() {
     setHistory((prev) => prev.slice(0, -1));
   };
 
-  const handleValidatePin = async () => {
-    if (!tournament) return;
-    setPinError(null);
-    try {
-      if (!pinInput || pinInput.length !== 4) {
-        setPinError('Please enter a 4-digit PIN.');
-        return;
-      }
-      await activateScorekeeperSession(pinInput, tournament);
-      setPinValidated(true);
-    } catch (value) {
-      const message = value instanceof Error ? value.message : 'Unknown error';
-      if (message === 'Invalid PIN') {
-        setPinError('Incorrect PIN. Please check the 4-digit venue PIN and try again.');
-      } else {
-        setPinError(`Error activating session: ${message}`);
-      }
-    }
-  };
-
   const handleCompleteMatch = () => {
     if (!tournamentId || !match || !pendingWinnerId) return;
     setShowEndMatchModal(true);
@@ -432,32 +395,6 @@ export default function ScoreEntryScreen() {
     return (
       <SafeAreaView style={styles.centered}>
         <Text style={styles.errorText}>{matchError ?? 'Match or tournament not found.'}</Text>
-      </SafeAreaView>
-    );
-  }
-
-  // PIN gate
-  if (!pinValidated) {
-    return (
-      <SafeAreaView style={styles.safeArea}>
-        <View style={styles.pinContainer}>
-          <AppCard style={styles.pinCard}>
-            <Text style={styles.pinTitle}>Enter Venue PIN</Text>
-            {pinError ? <Text style={styles.errorBanner}>{pinError}</Text> : null}
-            <AppInput
-              label="Venue PIN"
-              value={pinInput}
-              onChangeText={(text) => {
-                setPinInput(text);
-                if (pinError) setPinError(null);
-              }}
-              maxLength={4}
-              keyboardType="number-pad"
-              placeholder="4-digit PIN"
-            />
-            <AppButton label="Unlock Score Entry" onPress={handleValidatePin} />
-          </AppCard>
-        </View>
       </SafeAreaView>
     );
   }
@@ -624,17 +561,6 @@ const styles = StyleSheet.create({
     color: '#B91C1C',
     fontWeight: '700',
   },
-  errorBanner: {
-    color: '#EF4444',
-    backgroundColor: 'rgba(239, 68, 68, 0.1)',
-    borderColor: 'rgba(239, 68, 68, 0.3)',
-    borderWidth: 1,
-    borderRadius: 8,
-    padding: 10,
-    fontWeight: '600',
-    fontSize: 14,
-  },
-
   // Header
   header: {
     paddingHorizontal: 12,
@@ -780,18 +706,4 @@ const styles = StyleSheet.create({
     flex: 1,
   },
 
-  // PIN screen
-  pinContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    padding: 16,
-  },
-  pinCard: {
-    gap: 12,
-  },
-  pinTitle: {
-    fontSize: 20,
-    fontWeight: '800',
-    color: theme.colors.text,
-  },
 });
