@@ -2,36 +2,95 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-
-    // Users can only read/write their own user document
-    match /users/{userId} {
-      allow read, write: if request.auth != null && request.auth.uid == userId;
+    function isSignedIn() {
+      return request.auth != null;
     }
 
+    function isOrganizer(tournamentId) {
+      let t = get(/databases/$(database)/documents/tournaments/$(tournamentId));
+      return isSignedIn() && t.data.organizerId == request.auth.uid;
+    }
 
-    // Tournaments: organizer has full control; public read if enabled
+    function isActiveScorekeeper(tournamentId) {
+      let access = get(/databases/$(database)/documents/tournaments/$(tournamentId)/scorekeeperAccess/$(request.auth.uid));
+      return isSignedIn()
+          && access != null
+          && access.data.expiresAt > request.time;
+    }
+
+    function isPubliclyViewable(tournamentId) {
+      return get(/databases/$(database)/documents/tournaments/$(tournamentId)).data.publicViewEnabled == true;
+    }
+
+    match /users/{userId} {
+      allow read, write: if isSignedIn() && request.auth.uid == userId;
+    }
+
     match /tournaments/{tournamentId} {
-      allow read: if resource.data.publicViewEnabled == true
-                  || (request.auth != null && request.auth.uid == resource.data.organizerId);
-      allow create: if request.auth != null;
-      allow update, delete: if request.auth != null
-                            && request.auth.uid == resource.data.organizerId;
+      allow read:   if resource.data.publicViewEnabled == true
+                    || (isSignedIn() && request.auth.uid == resource.data.organizerId);
+      allow create: if isSignedIn();
+      allow update,
+            delete: if isSignedIn()
+                    && request.auth.uid == resource.data.organizerId;
 
+      match /pairingRequests/{requestId} {
+        allow create: if isSignedIn()
+                      && request.resource.data.scorekeeperUid == request.auth.uid
+                      && request.resource.data.keys().hasAll(
+                           ['scorekeeperUid', 'nonce', 'deviceLabel', 'createdAt', 'expiresAt'])
+                      && request.resource.data.nonce is string
+                      && request.resource.data.nonce.size() >= 32
+                      && request.resource.data.deviceLabel is string
+                      && request.resource.data.deviceLabel.size() <= 64
+                      && request.resource.data.expiresAt is timestamp
+                      && request.resource.data.expiresAt < request.time + duration.value(10, 'm');
 
-      // Players sub-collection
-      match /players/{playerId} {
-        allow read: if get(/databases/$(database)/documents/tournaments/$(tournamentId)).data.publicViewEnabled == true
-                    || (request.auth != null);
-        allow write: if request.auth != null;
+        allow read:   if isOrganizer(tournamentId)
+                      || (isSignedIn() && resource.data.scorekeeperUid == request.auth.uid);
+
+        allow delete: if isOrganizer(tournamentId)
+                      || (isSignedIn() && resource.data.scorekeeperUid == request.auth.uid);
+
+        allow update: if false;
       }
 
+      match /scorekeeperAccess/{scorekeeperUid} {
+        allow read: if isOrganizer(tournamentId)
+                    || (isSignedIn() && scorekeeperUid == request.auth.uid);
 
-      // Matches sub-collection
+        allow create: if isOrganizer(tournamentId)
+                      && request.resource.data.keys().hasAll(
+                           ['tournamentId', 'approvedAt', 'approvedBy', 'expiresAt', 'deviceLabel'])
+                      && request.resource.data.tournamentId == tournamentId
+                      && request.resource.data.approvedBy == request.auth.uid
+                      && request.resource.data.expiresAt is timestamp
+                      && request.resource.data.expiresAt > request.time
+                      && request.resource.data.expiresAt < request.time + duration.value(24, 'h');
+
+        allow update: if isOrganizer(tournamentId)
+                      && request.resource.data.tournamentId == tournamentId
+                      && request.resource.data.expiresAt > request.time
+                      && request.resource.data.expiresAt < request.time + duration.value(24, 'h');
+
+        allow delete: if isOrganizer(tournamentId);
+      }
+
+      match /players/{playerId} {
+        allow read:  if isPubliclyViewable(tournamentId)
+                     || isOrganizer(tournamentId)
+                     || isActiveScorekeeper(tournamentId);
+        allow write: if isOrganizer(tournamentId);
+      }
+
       match /matches/{matchId} {
-        allow read: if get(/databases/$(database)/documents/tournaments/$(tournamentId)).data.publicViewEnabled == true
-                    || (request.auth != null);
-        // Write allowed if organizer OR if the venuePin was validated (handle in app logic)
-        allow write: if request.auth != null;
+        allow read:  if isPubliclyViewable(tournamentId)
+                     || isOrganizer(tournamentId)
+                     || isActiveScorekeeper(tournamentId);
+        allow create,
+              delete: if isOrganizer(tournamentId);
+        allow update: if isOrganizer(tournamentId)
+                      || isActiveScorekeeper(tournamentId);
       }
     }
   }
