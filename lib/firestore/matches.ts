@@ -7,6 +7,7 @@ import {
   onSnapshot,
   orderBy,
   query,
+  runTransaction,
   serverTimestamp,
   updateDoc,
   where,
@@ -71,21 +72,14 @@ export async function updateScore(
   updates: Partial<import('@/lib/firestore/types').ScoreGame>,
 ): Promise<void> {
   const matchRef = doc(db, 'tournaments', tournamentId, 'matches', matchId);
-  const snapshot = await getDoc(matchRef);
-  if (!snapshot.exists()) return;
-
-  const match = snapshot.data() as MatchDocument;
-  const updatedScores = [...match.scores];
-  if (!updatedScores[gameIndex]) return;
-
-  updatedScores[gameIndex] = {
-    ...updatedScores[gameIndex],
-    ...updates,
-  };
-
-  await updateDoc(matchRef, {
-    scores: updatedScores,
-    updatedAt: serverTimestamp(),
+  await runTransaction(db, async (tx) => {
+    const snap = await tx.get(matchRef);
+    if (!snap.exists()) return;
+    const match = snap.data() as MatchDocument;
+    if (!match.scores[gameIndex]) return;
+    const updatedScores = [...match.scores];
+    updatedScores[gameIndex] = { ...updatedScores[gameIndex], ...updates };
+    tx.update(matchRef, { scores: updatedScores, updatedAt: serverTimestamp() });
   });
 }
 
@@ -99,46 +93,43 @@ export async function completeMatch(
   const currentSnapshot = await getDoc(matchRef);
   const currentMatch = currentSnapshot.exists() ? (currentSnapshot.data() as MatchDocument) : null;
   const winnerName =
-    currentMatch?.player1Id === winnerId
-      ? currentMatch.player1Name
-      : currentMatch?.player2Id === winnerId
-        ? currentMatch.player2Name
-        : 'TBD';
+    currentMatch?.player1Id === winnerId ? currentMatch.player1Name
+    : currentMatch?.player2Id === winnerId ? currentMatch.player2Name
+    : 'TBD';
 
-  await updateDoc(matchRef, {
+  const batch = writeBatch(db);
+  batch.update(matchRef, {
     status: 'completed',
     winnerId,
     completedAt: serverTimestamp(),
     updatedAt: serverTimestamp(),
   });
 
-  // MVP default: write winner into player1 slot of next knockout match.
   if (nextMatchId) {
     const nextRef = doc(db, 'tournaments', tournamentId, 'matches', nextMatchId);
     const nextSnapshot = await getDoc(nextRef);
-    if (!nextSnapshot.exists()) return;
+    if (nextSnapshot.exists()) {
+      const nextMatch = nextSnapshot.data() as MatchDocument;
+      const player1Open = !nextMatch.player1Id || nextMatch.player1Id === 'TBD';
+      const player2Open = !nextMatch.player2Id || nextMatch.player2Id === 'TBD';
 
-    const nextMatch = nextSnapshot.data() as MatchDocument;
-    const player1Open = !nextMatch.player1Id || nextMatch.player1Id === 'TBD';
-    const player2Open = !nextMatch.player2Id || nextMatch.player2Id === 'TBD';
-
-    if (player1Open || nextMatch.player1Id === winnerId) {
-      await updateDoc(nextRef, {
-        player1Id: winnerId,
-        player1Name: winnerName,
-        updatedAt: serverTimestamp(),
-      });
-      return;
-    }
-
-    if (player2Open || nextMatch.player2Id === winnerId) {
-      await updateDoc(nextRef, {
-        player2Id: winnerId,
-        player2Name: winnerName,
-        updatedAt: serverTimestamp(),
-      });
+      if (player1Open || nextMatch.player1Id === winnerId) {
+        batch.update(nextRef, {
+          player1Id: winnerId,
+          player1Name: winnerName,
+          updatedAt: serverTimestamp(),
+        });
+      } else if (player2Open || nextMatch.player2Id === winnerId) {
+        batch.update(nextRef, {
+          player2Id: winnerId,
+          player2Name: winnerName,
+          updatedAt: serverTimestamp(),
+        });
+      }
     }
   }
+
+  await batch.commit();
 }
 
 const BATCH_LIMIT = 500;
