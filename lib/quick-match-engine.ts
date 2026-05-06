@@ -72,3 +72,48 @@ export function currentServer(match: QuickMatch): Side {
   if (match.history.length === 0) return 'A';
   return match.history[match.history.length - 1];
 }
+
+export function isMatchOver(match: QuickMatch): Side | null {
+  const need = gamesNeededToWinMatch(match.rules);
+  const aWins = match.completedGames.filter((g) => g.winner === 'A').length;
+  const bWins = match.completedGames.filter((g) => g.winner === 'B').length;
+  if (aWins >= need) return 'A';
+  if (bWins >= need) return 'B';
+  return null;
+}
+
+export function applyPoint(match: QuickMatch, side: Side): QuickMatch {
+  if (match.matchWinner) return match;
+
+  const nextGame: QuickGame = {
+    a: match.currentGame.a + (side === 'A' ? 1 : 0),
+    b: match.currentGame.b + (side === 'B' ? 1 : 0),
+    winner: null,
+  };
+  const winner = isGameOver(nextGame, match.rules);
+
+  if (!winner) {
+    return {
+      ...match,
+      currentGame: nextGame,
+      history: [...match.history, side],
+    };
+  }
+
+  // Game complete — push to completedGames, reset current, clear history.
+  const finalGame: QuickGame = { ...nextGame, winner };
+  const completedGames = [...match.completedGames, finalGame];
+  const aWins = completedGames.filter((g) => g.winner === 'A').length;
+  const bWins = completedGames.filter((g) => g.winner === 'B').length;
+  const need = gamesNeededToWinMatch(match.rules);
+  const matchWinner: Side | null =
+    aWins >= need ? 'A' : bWins >= need ? 'B' : null;
+
+  return {
+    ...match,
+    completedGames,
+    currentGame: { a: 0, b: 0, winner: null },
+    history: [],
+    matchWinner,
+  };
+}

@@ -80,4 +80,106 @@ describe('currentServer', () => {
   });
 });
 
-void RULES_BO3;
+import { applyPoint, isMatchOver } from '@/lib/quick-match-engine';
+
+function applyMany(match: ReturnType<typeof createMatch>, sequence: ('A' | 'B')[]) {
+  return sequence.reduce((m, s) => applyPoint(m, s), match);
+}
+
+describe('applyPoint — single side increments', () => {
+  it('increments side A and pushes history', () => {
+    const m = createMatch({ format: 'singles', sideAName: 'A', sideBName: 'B', rules: RULES_DEUCE });
+    const m2 = applyPoint(m, 'A');
+    expect(m2.currentGame).toEqual({ a: 1, b: 0, winner: null });
+    expect(m2.history).toEqual(['A']);
+  });
+});
+
+describe('applyPoint — completes a game (no deuce, bestOf=1)', () => {
+  it('A wins game 1 → match over with matchWinner A', () => {
+    const m = createMatch({ format: 'singles', sideAName: 'A', sideBName: 'B', rules: RULES_NO_DEUCE });
+    const seq: ('A' | 'B')[] = Array(21).fill('A');
+    const m2 = applyMany(m, seq);
+    expect(m2.completedGames).toHaveLength(1);
+    expect(m2.completedGames[0].winner).toBe('A');
+    expect(m2.completedGames[0]).toEqual({ a: 21, b: 0, winner: 'A' });
+    expect(m2.currentGame).toEqual({ a: 0, b: 0, winner: null });
+    expect(m2.history).toEqual([]);
+    expect(m2.matchWinner).toBe('A');
+  });
+});
+
+describe('applyPoint — completes a game (deuce extension)', () => {
+  it('22-20 closes the game', () => {
+    const m = createMatch({ format: 'singles', sideAName: 'A', sideBName: 'B', rules: RULES_DEUCE });
+    // Reach 20-20 then A wins next two
+    const seq: ('A' | 'B')[] = [];
+    for (let i = 0; i < 20; i++) { seq.push('A'); seq.push('B'); }
+    seq.push('A'); // 21-20
+    seq.push('A'); // 22-20 → A wins
+    const m2 = applyMany(m, seq);
+    expect(m2.completedGames).toHaveLength(1);
+    expect(m2.completedGames[0]).toEqual({ a: 22, b: 20, winner: 'A' });
+    expect(m2.matchWinner).toBe('A');
+  });
+
+  it('cap at 30 fires from 29-29 → next point wins', () => {
+    const m = createMatch({ format: 'singles', sideAName: 'A', sideBName: 'B', rules: RULES_DEUCE });
+    // Reach 29-29 (deuce game continuing)
+    const seq: ('A' | 'B')[] = [];
+    for (let i = 0; i < 29; i++) { seq.push('A'); seq.push('B'); }
+    seq.push('B'); // 29-30 → B wins via cap
+    const m2 = applyMany(m, seq);
+    expect(m2.completedGames[0]).toEqual({ a: 29, b: 30, winner: 'B' });
+    expect(m2.matchWinner).toBe('B');
+  });
+});
+
+describe('applyPoint — bestOf=3 progression', () => {
+  it('A wins game 1 and game 2 → match over after 2 games', () => {
+    const m = createMatch({ format: 'singles', sideAName: 'A', sideBName: 'B', rules: RULES_BO3 });
+    // Game 1: A 21-0
+    let m2 = applyMany(m, Array(21).fill('A'));
+    expect(m2.matchWinner).toBeNull();
+    expect(m2.completedGames).toHaveLength(1);
+    // Game 2: A 21-0
+    m2 = applyMany(m2, Array(21).fill('A'));
+    expect(m2.matchWinner).toBe('A');
+    expect(m2.completedGames).toHaveLength(2);
+  });
+
+  it('1-1 in games then A wins game 3 → match over', () => {
+    const m = createMatch({ format: 'singles', sideAName: 'A', sideBName: 'B', rules: RULES_BO3 });
+    let m2 = applyMany(m, Array(21).fill('A'));      // game 1 A
+    m2 = applyMany(m2, Array(21).fill('B'));         // game 2 B
+    expect(m2.matchWinner).toBeNull();
+    m2 = applyMany(m2, Array(21).fill('A'));         // game 3 A
+    expect(m2.matchWinner).toBe('A');
+    expect(m2.completedGames).toHaveLength(3);
+  });
+});
+
+describe('applyPoint — no-op after match over', () => {
+  it('does not modify match once matchWinner is set', () => {
+    const m = createMatch({ format: 'singles', sideAName: 'A', sideBName: 'B', rules: RULES_NO_DEUCE });
+    let m2 = applyMany(m, Array(21).fill('A'));
+    expect(m2.matchWinner).toBe('A');
+    const m3 = applyPoint(m2, 'B');
+    expect(m3).toBe(m2); // identity — no-op
+  });
+});
+
+describe('isMatchOver', () => {
+  it('returns null until a side has won enough games', () => {
+    const m = createMatch({ format: 'singles', sideAName: 'A', sideBName: 'B', rules: RULES_BO3 });
+    expect(isMatchOver(m)).toBeNull();
+  });
+  it('returns the side that has won enough games', () => {
+    const m = createMatch({ format: 'singles', sideAName: 'A', sideBName: 'B', rules: RULES_BO3 });
+    const m2 = { ...m, completedGames: [
+      { a: 21, b: 0, winner: 'A' as const },
+      { a: 21, b: 0, winner: 'A' as const },
+    ] };
+    expect(isMatchOver(m2)).toBe('A');
+  });
+});
