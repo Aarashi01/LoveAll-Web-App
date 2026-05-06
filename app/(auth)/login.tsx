@@ -16,6 +16,7 @@ import {
 import { AppButton } from '@/components/ui/AppButton';
 import { AppCard } from '@/components/ui/AppCard';
 import { AppInput } from '@/components/ui/AppInput';
+import { QuickMatchButton } from '@/components/quick/QuickMatchButton';
 import { theme } from '@/constants/theme';
 import { useAuth } from '@/hooks/useAuth';
 
@@ -111,6 +112,9 @@ export default function LoginScreen() {
         onPress={() => void handleLogin()}
         style={styles.submitButton}
       />
+      <View style={{ marginTop: 16 }}>
+        <QuickMatchButton />
+      </View>
       <Link href="/(auth)/register" style={styles.link}>
         Need an account? Create one
       </Link>

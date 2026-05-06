@@ -15,6 +15,7 @@ import {
 import { TournamentCard } from '@/components/tournament/TournamentCard';
 import { AppButton } from '@/components/ui/AppButton';
 import { AppCard } from '@/components/ui/AppCard';
+import { QuickMatchButton } from '@/components/quick/QuickMatchButton';
 import { theme } from '@/constants/theme';
 import { useAuth } from '@/hooks/useAuth';
 import { deleteTournament, subscribeToOrganizerTournaments } from '@/lib/firestore/tournaments';
@@ -132,6 +133,9 @@ export default function OrganizerDashboardScreen() {
                 style={styles.toolbarButton}
               />
             </View>
+          </View>
+          <View style={{ marginBottom: 24 }}>
+            <QuickMatchButton />
           </View>
           <View style={styles.statsGrid}>
             {stats.map((item) => (
