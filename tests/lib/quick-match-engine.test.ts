@@ -183,3 +183,36 @@ describe('isMatchOver', () => {
     expect(isMatchOver(m2)).toBe('A');
   });
 });
+
+import { undoLastPoint } from '@/lib/quick-match-engine';
+
+describe('undoLastPoint', () => {
+  it('decrements the last side scored and pops history', () => {
+    const m = createMatch({ format: 'singles', sideAName: 'A', sideBName: 'B', rules: RULES_DEUCE });
+    let m2 = applyPoint(m, 'A');
+    m2 = applyPoint(m2, 'A');
+    m2 = applyPoint(m2, 'B');
+    // 2-1, history = [A,A,B]
+    const m3 = undoLastPoint(m2);
+    expect(m3.currentGame).toEqual({ a: 2, b: 0, winner: null });
+    expect(m3.history).toEqual(['A', 'A']);
+  });
+
+  it('is a no-op when history is empty', () => {
+    const m = createMatch({ format: 'singles', sideAName: 'A', sideBName: 'B', rules: RULES_DEUCE });
+    const m2 = undoLastPoint(m);
+    expect(m2).toBe(m);
+  });
+
+  it('does NOT cross game boundaries (after a game ends, history is empty)', () => {
+    const m = createMatch({ format: 'singles', sideAName: 'A', sideBName: 'B', rules: RULES_BO3 });
+    // Win game 1 by A 21-0
+    let m2 = m;
+    for (let i = 0; i < 21; i++) m2 = applyPoint(m2, 'A');
+    expect(m2.completedGames).toHaveLength(1);
+    expect(m2.history).toEqual([]);
+    const m3 = undoLastPoint(m2);
+    expect(m3).toBe(m2); // no-op — history is empty
+    expect(m3.completedGames).toHaveLength(1);
+  });
+});

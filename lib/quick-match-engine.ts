@@ -82,6 +82,20 @@ export function isMatchOver(match: QuickMatch): Side | null {
   return null;
 }
 
+export function undoLastPoint(match: QuickMatch): QuickMatch {
+  if (match.history.length === 0) return match;
+  const last = match.history[match.history.length - 1];
+  return {
+    ...match,
+    currentGame: {
+      a: match.currentGame.a - (last === 'A' ? 1 : 0),
+      b: match.currentGame.b - (last === 'B' ? 1 : 0),
+      winner: null,
+    },
+    history: match.history.slice(0, -1),
+  };
+}
+
 export function applyPoint(match: QuickMatch, side: Side): QuickMatch {
   if (match.matchWinner) return match;
 
