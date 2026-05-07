@@ -1,185 +1,101 @@
 # LoveAll
 
-Badminton tournament management and live scoring web app.
+**Run badminton tournaments. Score live matches. Watch from anywhere.**
 
-**Live**: [loveall-3ca71.web.app](https://loveall-3ca71.web.app)
+🏸 **Live app: [loveall-3ca71.web.app](https://loveall-3ca71.web.app)**
 
-Built with Expo Router, React Native Web, and Firebase. One codebase, ships to web today; iOS / Android-ready when you want them.
+LoveAll is a badminton tournament app that handles everything from setup to scoreboard. Organizers run the event, scorekeepers track points court-side, players and spectators watch live scores from their phone — all in one place.
 
----
-
-## What it does
-
-LoveAll runs a badminton tournament from setup to scoreboard:
-
-- **Organizer** — create a tournament, register players, generate a draw, schedule matches, publish results.
-- **Scorekeeper** — score live matches court-side, with BWF-style game/match logic, deuce, intervals, and undo.
-- **Spectator (Watch Party)** — public read-only view of live scores, set summaries, and statistics for any tournament with public view enabled.
-- **Quick Match** — a no-login, no-tournament scoreboard for casual play. Two taps to start, massive split scoreboard, undo, rematch.
+No spreadsheets. No paper draws. No "what was the score again?".
 
 ---
 
-## Screens
+## What you can do
 
-| Route | Audience | What |
+### 🏆 Run a tournament (Organizer)
+Create a tournament, add players, generate a draw, schedule matches, publish results. PIN-protected once it's live so only you can manage it.
+
+### 📋 Score a match (Scorekeeper)
+Live match scoring with badminton rules built in — deuce, intervals, change of ends, undo, match completion. Just tap to add points.
+
+### 👀 Watch from anywhere (Spectator)
+A public watch-party link for any tournament. See live scores, completed sets, point-by-point history, and head-to-head statistics.
+
+### ⚡ Just score a game (Quick Match)
+No login. No tournament. Just a clean scoreboard for a casual game between you and a friend. Two taps and you're scoring.
+
+---
+
+## How to use it
+
+### As a tournament organizer
+
+1. **Sign up** at [loveall-3ca71.web.app](https://loveall-3ca71.web.app/register) with your email.
+2. **Create a tournament** from your dashboard — pick a name, format (singles / doubles / mixed), points-per-game (11 / 15 / 21), best-of-1 or best-of-3, and the bracket size.
+3. **Add players** — register them one by one, or import a roster from an Excel file. For doubles, pair partners.
+4. **Generate the schedule** — LoveAll splits players into groups, builds the round-robin matches, and creates the knockout bracket automatically.
+5. **Hand a venue PIN to your scorekeepers** — a 4-digit code that lets them score matches without seeing organizer settings.
+6. **Watch results land in real time** — every score entered court-side updates your dashboard instantly.
+7. **Publish or export** — share the public watch-party link with players and friends, or export results as a PDF.
+
+> 🔒 Once a tournament goes live, the manage screen requires the venue PIN. Forgot it? You can recover it from your own dashboard.
+
+### As a scorekeeper at the venue
+
+1. The organizer gives you a **venue PIN** (or a QR pairing link).
+2. Open the match on your phone, enter the PIN, and you're in.
+3. **Tap a player to add a point.** That's it — LoveAll handles game-over, deuce, the 11-point interval, change of ends in the deciding game, and match completion.
+4. Made a mistake? **Undo** rolls back the last point.
+5. When the match ends, confirm the winner — the result publishes everywhere instantly.
+
+### As a player or spectator
+
+1. Get the **watch-party link** from the organizer (or visit `/(watch)/<tournament-slug>`).
+2. See every match in the tournament — filter by **All / Live / Completed**.
+3. Tap a match for the full view: live score, set summary, point-by-point grid, and statistics like longest streak, biggest lead, comeback wins.
+4. No account needed. Just open the link.
+
+### Just want to score a casual match?
+
+1. Hit **"Quick Match"** on the homepage.
+2. Pick singles or doubles, name the two sides, choose points-to-win (default 21), best-of-1 or 3, and whether deuce is on.
+3. Press **Start match**.
+4. Tap a side to score. The serving side has a red rule on top. Score numerals are huge so you can read them across a court.
+5. When someone wins, the screen celebrates — then **Rematch** for another game or **New match** to set up something different.
+
+No login. No data saved. Just score a game.
+
+---
+
+## Why LoveAll
+
+- **One app, every screen** — works on a phone in your pocket, a tablet at the scorer's table, and a laptop at the organizer's desk.
+- **Built for badminton** — BWF scoring (deuce, cap, intervals, change of ends) is wired in, not bolted on.
+- **Real-time everywhere** — every score updates the public watch view, the organizer dashboard, and the scorekeeper screen instantly.
+- **Public is public** — you decide whether your tournament is shareable. Off by default.
+- **Fast** — a Quick Match takes two taps. A full tournament setup takes minutes, not hours.
+
+---
+
+## Roles at a glance
+
+| You are… | You can… | You don't need… |
 |---|---|---|
-| `/login`, `/register` | All | Auth, with Quick Match shortcut |
-| `/(organizer)/dashboard` | Organizer | Stat strip, tournament list, search, Quick Match CTA |
-| `/(organizer)/new-tournament` | Organizer | Format, categories, scoring rules, venue PIN |
-| `/(organizer)/[id]/manage` | Organizer | Operations hub — Players / Schedule / Results, PIN-gated when active |
-| `/(organizer)/[id]/setup` | Organizer | Player registration, partner pairing, Excel import |
-| `/(organizer)/[id]/schedule` | Organizer | Generated draws, court assignments, match list |
-| `/(organizer)/[id]/results` | Organizer | Live results, PDF export |
-| `/(scorekeeper)/enter/[matchId]` | Scorekeeper | BWF-compliant scoring with intervals + undo |
-| `/(watch)/[slug]` | Spectator | Public match list with filter pills (All / Live / Completed) |
-| `/(watch)/[slug]/match/[matchId]` | Spectator | Live score hero + set summary + statistics |
-| `/quick`, `/quick/play` | Anyone | Quick Match — no login |
+| **Organizer** | Create + run tournaments, manage players, generate schedules, publish results | Anything beyond a free email account |
+| **Scorekeeper** | Score live matches at the venue | An account — just the venue PIN |
+| **Spectator** | Watch any tournament that's been made public | An account |
+| **Casual player** | Use Quick Match to score a friendly game | An account |
 
 ---
 
-## Tech stack
+## Live URL
 
-- **App framework**: Expo SDK 54 + Expo Router 6 (file-based routing)
-- **UI**: React Native + React Native Web (single codebase across web/iOS/Android)
-- **State**: Zustand (app + scorekeeper + Quick Match stores), React Query (server-state subscriptions)
-- **Backend**: Firebase Auth + Firestore (real-time listeners), Firebase Hosting
-- **Animation**: react-native-reanimated v4
-- **Lang**: TypeScript (strict)
-- **Build**: Metro (Expo's web bundler) → static export
+👉 **[loveall-3ca71.web.app](https://loveall-3ca71.web.app)**
 
----
-
-## Project structure
-
-```
-app/                          Expo Router screens (file-based)
-├── (auth)/                   login, register
-├── (organizer)/              authenticated dashboard + tournament operations
-│   └── [id]/                 manage, setup, schedule, results
-├── (scorekeeper)/enter/      court-side scoring
-├── (watch)/[slug]/           public live view
-└── quick/                    no-login Quick Match
-
-components/
-├── ui/                       primitives — AppButton, AppCard, AppInput, ProfileMenu, TopBar
-├── tournament/               TournamentCard, PlayerList
-├── score/                    ScoreInput, GameScoreBar, IntervalTimer, LiveScoreCard
-├── watch/                    WatchMatchCard, MatchScoreGrid, MatchSetSummary, MatchStatistics
-├── bracket/                  GroupStandingsTable, KnockoutBracket
-└── quick/                    QuickMatchButton CTA
-
-constants/theme.ts            Design tokens (Nike-inspired palette, type, spacing, radii)
-hooks/                        useAuth, useMatches, useTournament
-lib/
-├── firebase.ts               Firebase init
-├── firestore/                Firestore queries + types
-├── quick-match-engine.ts     Pure game/match logic (deuce, cap, best-of, undo)
-├── schedule-generator.ts     Group + knockout bracket generation
-├── scorekeeper-session.ts    PIN/QR-validated scorekeeper session
-├── player-excel.ts           Player roster import (exceljs)
-└── pdf-generator.ts          Results export
-
-store/                        Zustand stores (app, quick-match)
-firestore.rules               Security rules — organizer / scorekeeper / public scopes
-firebase.json                 Hosting + Firestore config
-```
-
----
-
-## Getting started
-
-### Prerequisites
-
-- Node 22+ (24.1.0 used in this repo)
-- npm
-- A Firebase project with Auth (Email/Password + Anonymous) and Firestore enabled
-- `firebase-tools` (`npm install -g firebase-tools`) if you plan to deploy
-
-### Install
-
-```bash
-git clone https://github.com/Aarashi01/LoveAll-Web-App.git
-cd LoveAll-Web-App
-npm install
-```
-
-### Configure Firebase
-
-Copy `.env.example` to `.env` and fill in your project's keys (Project Settings → Web app):
-
-```bash
-cp .env.example .env
-```
-
-```
-EXPO_PUBLIC_FIREBASE_API_KEY=...
-EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN=your-project.firebaseapp.com
-EXPO_PUBLIC_FIREBASE_PROJECT_ID=your-project
-EXPO_PUBLIC_FIREBASE_STORAGE_BUCKET=your-project.firebasestorage.app
-EXPO_PUBLIC_FIREBASE_MESSAGING_SENDER_ID=...
-EXPO_PUBLIC_FIREBASE_APP_ID=...
-EXPO_PUBLIC_FIREBASE_MEASUREMENT_ID=...
-```
-
-Then deploy security rules + indexes once:
-
-```bash
-firebase login
-firebase use your-project
-firebase deploy --only firestore:rules,firestore:indexes
-```
-
-### Run
-
-```bash
-npm run web        # Web (the primary target — http://localhost:8081)
-npm run ios        # iOS simulator
-npm run android    # Android emulator
-```
-
----
-
-## Scripts
-
-| Script | What |
-|---|---|
-| `npm run start` | Expo dev server (pick platform from menu) |
-| `npm run web` | Dev server for web |
-| `npm run ios` / `npm run android` | Native dev |
-| `npm run build:web` | Static export to `dist/` (production bundle) |
-| `npm run deploy:hosting` | Deploy `dist/` to Firebase Hosting |
-| `npm run deploy:web` | `build:web` + `deploy:hosting` in one shot |
-
----
-
-## Design system
-
-Light, monochrome, athletic. Inspired by [Nike.in](https://www.nike.in/)'s aesthetic:
-
-- **Surfaces**: paper white, jet-black ink for hero bands.
-- **Accent**: a single Nike-red used sparingly for live status, urgency, and the Quick Match dot.
-- **Geometry**: sharp rectangles for cards / inputs / segmented controls; pill (`borderRadius: 999`) reserved for CTAs and chips.
-- **Type**: heavy display weights with negative letter-spacing for headlines, uppercase tracking for eyebrows / labels.
-- **No glassmorphism** — no backdrop-filter blur, no glow orbs, no gradient buttons.
-
-All design tokens live in `constants/theme.ts`. Most styling reads from those tokens; if you change a colour or radius there, the whole app moves with you.
-
----
-
-## Branch model
-
-- `master` — production. Deploy from here. Direct pushes are blocked; ship via PR.
-- `vignesh/ui-layout` — current dev branch.
-- Feature branches off `master`; open a PR back to `master`.
+Bookmark it on your phone's home screen — it works as a web app, no install needed.
 
 ---
 
 ## Releases
 
-Releases are tagged `vX.Y.Z` on `master` and listed at [Releases](https://github.com/Aarashi01/LoveAll-Web-App/releases). The current production build is **[v1.0.0](https://github.com/Aarashi01/LoveAll-Web-App/releases/tag/v1.0.0)**.
-
----
-
-## License
-
-No license declared yet — treat the source as "all rights reserved" until one is added.
+Tagged production builds are listed at [Releases](https://github.com/Aarashi01/LoveAll-Web-App/releases). The current build is **[v1.0.0](https://github.com/Aarashi01/LoveAll-Web-App/releases/tag/v1.0.0)**.
