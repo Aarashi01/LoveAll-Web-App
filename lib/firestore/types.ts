@@ -1,11 +1,15 @@
-import { FieldValue, Timestamp } from 'firebase/firestore';
+import { FieldValue, Timestamp } from "firebase/firestore";
 
-export type MatchCategory = 'MS' | 'WS' | 'MD' | 'WD' | 'XD';
-export type TournamentStatus = 'draft' | 'group_stage' | 'knockout' | 'completed';
-export type MatchRound = 'group' | 'R16' | 'QF' | 'SF' | 'F' | '3rd';
-export type MatchStatus = 'scheduled' | 'live' | 'completed' | 'walkover';
-export type PlayerGender = 'M' | 'F';
-export type AppUserRole = 'organizer';
+export type MatchCategory = "MS" | "WS" | "MD" | "WD" | "XD";
+export type TournamentStatus =
+  | "draft"
+  | "group_stage"
+  | "knockout"
+  | "completed";
+export type MatchRound = "group" | "R16" | "QF" | "SF" | "F" | "3rd";
+export type MatchStatus = "scheduled" | "live" | "completed" | "walkover";
+export type PlayerGender = "M" | "F";
+export type AppUserRole = "organizer";
 
 export type FirestoreDate = Timestamp;
 export type FirestoreDateInput = Timestamp | FieldValue;
@@ -32,6 +36,9 @@ export interface TournamentDocument {
   publicViewEnabled: boolean;
   createdAt: FirestoreDate;
   updatedAt: FirestoreDate;
+}
+
+export interface TournamentPrivateSettings {
   venuePin: string;
 }
 
@@ -45,6 +52,12 @@ export interface CreateTournamentInput {
   knockoutSize: 16 | 8 | 4;
   publicViewEnabled?: boolean;
   venuePin: string;
+}
+
+export interface ScorekeeperAccess {
+  validated: boolean;
+  tournamentId: string;
+  validatedAt: FirestoreDate;
 }
 
 export interface PlayerDocument {
@@ -69,17 +82,19 @@ export interface CreatePlayerInput {
   seeded?: boolean;
 }
 
-export type ServiceCourt = 'right' | 'left';
+export type ServiceCourt = "right" | "left";
 
 export interface ScoreGame {
   gameNumber: number;
   p1Score: number;
   p2Score: number;
-  currentServer?: 'p1' | 'p2' | null;
+  currentServer?: "p1" | "p2" | null;
   sidesSwapped?: boolean;
-  winner: 'p1' | 'p2' | null;
+  winner: "p1" | "p2" | null;
   startedAt: FirestoreDate | null;
   endedAt: FirestoreDate | null;
+  /** Point-by-point history: each entry records [p1Score, p2Score] after each rally */
+  pointHistory?: [number, number][];
 }
 
 export interface MatchDocument {
@@ -131,4 +146,3 @@ export interface AppUserDocument {
   createdAt: FirestoreDate;
   tournamentIds: string[];
 }
-
