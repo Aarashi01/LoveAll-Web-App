@@ -1,7 +1,7 @@
-import * as DocumentPicker from 'expo-document-picker';
-import * as FileSystem from 'expo-file-system/legacy';
-import { Link, useLocalSearchParams } from 'expo-router';
-import { useEffect, useMemo, useState } from 'react';
+import * as DocumentPicker from "expo-document-picker";
+import * as FileSystem from "expo-file-system/legacy";
+import { Link, useLocalSearchParams } from "expo-router";
+import { useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -14,36 +14,49 @@ import {
   Text,
   View,
   useWindowDimensions,
-} from 'react-native';
+} from "react-native";
 
-import { PlayerList } from '@/components/tournament/PlayerList';
-import { AppButton } from '@/components/ui/AppButton';
-import { AppCard } from '@/components/ui/AppCard';
-import { AppInput } from '@/components/ui/AppInput';
-import { theme, toCategoryLabel, toPlayerGenderLabel } from '@/constants/theme';
-import { useTournament } from '@/hooks/useTournament';
-import { addPlayer, deletePlayer, subscribeToPlayers, updatePlayer } from '@/lib/firestore/players';
-import { type MatchCategory, type PlayerDocument, type PlayerGender } from '@/lib/firestore/types';
+import { PlayerList } from "@/components/tournament/PlayerList";
+import { AppButton } from "@/components/ui/AppButton";
+import { AppCard } from "@/components/ui/AppCard";
+import { AppInput } from "@/components/ui/AppInput";
+import { theme, toCategoryLabel, toPlayerGenderLabel } from "@/constants/theme";
+import { useTournament } from "@/hooks/useTournament";
+import {
+  addPlayer,
+  deletePlayer,
+  subscribeToPlayers,
+  updatePlayer,
+} from "@/lib/firestore/players";
+import {
+  type MatchCategory,
+  type PlayerDocument,
+  type PlayerGender,
+} from "@/lib/firestore/types";
 import {
   downloadTemplateExcel,
   parsePlayersWorkbookFromArrayBuffer,
   parsePlayersWorkbookFromBase64,
-} from '@/lib/player-excel';
+  type ParseResult,
+} from "@/lib/player-excel";
 
-const FALLBACK_CATEGORIES: MatchCategory[] = ['MS', 'WS', 'MD', 'WD', 'XD'];
+const FALLBACK_CATEGORIES: MatchCategory[] = ["MS", "WS", "MD", "WD", "XD"];
 
 function isDoublesCategory(category: MatchCategory): boolean {
-  return category === 'MD' || category === 'WD' || category === 'XD';
+  return category === "MD" || category === "WD" || category === "XD";
 }
 
 function normalizeName(value: string): string {
-  return value.trim().toLowerCase().replace(/\s+/g, ' ');
+  return value.trim().toLowerCase().replace(/\s+/g, " ");
 }
 
-function isCategoryAllowedForGender(category: MatchCategory, gender: PlayerGender): boolean {
-  if (category === 'XD') return true;
-  if (gender === 'M') return category === 'MS' || category === 'MD';
-  return category === 'WS' || category === 'WD';
+function isCategoryAllowedForGender(
+  category: MatchCategory,
+  gender: PlayerGender,
+): boolean {
+  if (category === "XD") return true;
+  if (gender === "M") return category === "MS" || category === "MD";
+  return category === "WS" || category === "WD";
 }
 
 function getCompatibleDoublesCategories(
@@ -58,17 +71,17 @@ function getCompatibleDoublesCategories(
     if (!isDoublesCategory(category)) return;
     if (!candidateCategories.includes(category)) return;
 
-    if (category === 'MD' && currentGender === 'M' && candidateGender === 'M') {
+    if (category === "MD" && currentGender === "M" && candidateGender === "M") {
       compatible.push(category);
       return;
     }
 
-    if (category === 'WD' && currentGender === 'F' && candidateGender === 'F') {
+    if (category === "WD" && currentGender === "F" && candidateGender === "F") {
       compatible.push(category);
       return;
     }
 
-    if (category === 'XD' && currentGender !== candidateGender) {
+    if (category === "XD" && currentGender !== candidateGender) {
       compatible.push(category);
     }
   });
@@ -78,23 +91,32 @@ function getCompatibleDoublesCategories(
 
 export default function TournamentSetupScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
-  const { tournament, loading: tournamentLoading, error: tournamentError } = useTournament(id);
+  const {
+    tournament,
+    loading: tournamentLoading,
+    error: tournamentError,
+  } = useTournament(id);
   const [players, setPlayers] = useState<PlayerDocument[]>([]);
   const [playersLoading, setPlayersLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [fieldErrors, setFieldErrors] = useState<{ name?: string; categories?: string }>({});
+  const [fieldErrors, setFieldErrors] = useState<{
+    name?: string;
+    categories?: string;
+  }>({});
 
-  const [name, setName] = useState('');
-  const [gender, setGender] = useState<PlayerGender>('M');
-  const [department, setDepartment] = useState('');
-  const [selectedCategories, setSelectedCategories] = useState<MatchCategory[]>([]);
+  const [name, setName] = useState("");
+  const [gender, setGender] = useState<PlayerGender>("M");
+  const [department, setDepartment] = useState("");
+  const [selectedCategories, setSelectedCategories] = useState<MatchCategory[]>(
+    [],
+  );
   const [partnerId, setPartnerId] = useState<string | null>(null);
   const [seeded, setSeeded] = useState(false);
   const [saving, setSaving] = useState(false);
   const [importing, setImporting] = useState(false);
   const [importSummary, setImportSummary] = useState<string | null>(null);
   const [editingPlayerId, setEditingPlayerId] = useState<string | null>(null);
-  const [searchQuery, setSearchQuery] = useState('');
+  const [searchQuery, setSearchQuery] = useState("");
 
   useEffect(() => {
     if (!id) {
@@ -102,13 +124,10 @@ export default function TournamentSetupScreen() {
       return;
     }
 
-    const unsubscribe = subscribeToPlayers(
-      id,
-      (nextPlayers) => {
-        setPlayers(nextPlayers);
-        setPlayersLoading(false);
-      },
-    );
+    const unsubscribe = subscribeToPlayers(id, (nextPlayers) => {
+      setPlayers(nextPlayers);
+      setPlayersLoading(false);
+    });
 
     return unsubscribe;
   }, [id]);
@@ -132,7 +151,8 @@ export default function TournamentSetupScreen() {
     () =>
       players.filter((player) => {
         if (editingPlayerId && player.id === editingPlayerId) return false;
-        if (player.partnerId && player.partnerId !== editingPlayerId) return false;
+        if (player.partnerId && player.partnerId !== editingPlayerId)
+          return false;
         if (!partnerSelectionEnabled) {
           return false;
         }
@@ -145,7 +165,13 @@ export default function TournamentSetupScreen() {
         );
         return compatibleCategories.length > 0;
       }),
-    [editingPlayerId, gender, partnerSelectionEnabled, players, selectedCategories],
+    [
+      editingPlayerId,
+      gender,
+      partnerSelectionEnabled,
+      players,
+      selectedCategories,
+    ],
   );
 
   const filteredPlayers = useMemo(() => {
@@ -155,18 +181,21 @@ export default function TournamentSetupScreen() {
     return players.filter((player) => {
       const baseText = [
         player.name,
-        player.department ?? '',
+        player.department ?? "",
         toPlayerGenderLabel(player.gender),
         ...player.categories.map(toCategoryLabel),
       ]
-        .join(' ')
+        .join(" ")
         .toLowerCase();
 
       return baseText.includes(query);
     });
   }, [players, searchQuery]);
 
-  const seededCount = useMemo(() => players.filter((player) => player.seeded).length, [players]);
+  const seededCount = useMemo(
+    () => players.filter((player) => player.seeded).length,
+    [players],
+  );
   const pairedCount = useMemo(
     () => players.filter((player) => Boolean(player.partnerId)).length,
     [players],
@@ -177,9 +206,9 @@ export default function TournamentSetupScreen() {
   );
 
   const clearForm = () => {
-    setName('');
-    setGender('M');
-    setDepartment('');
+    setName("");
+    setGender("M");
+    setDepartment("");
     setSelectedCategories([]);
     setPartnerId(null);
     setSeeded(false);
@@ -190,7 +219,9 @@ export default function TournamentSetupScreen() {
   const toggleCategory = (category: MatchCategory) => {
     if (!isCategoryAllowedForGender(category, gender)) return;
     setSelectedCategories((prev) =>
-      prev.includes(category) ? prev.filter((item) => item !== category) : [...prev, category],
+      prev.includes(category)
+        ? prev.filter((item) => item !== category)
+        : [...prev, category],
     );
   };
 
@@ -201,7 +232,7 @@ export default function TournamentSetupScreen() {
     setEditingPlayerId(player.id);
     setName(player.name);
     setGender(player.gender);
-    setDepartment(player.department ?? '');
+    setDepartment(player.department ?? "");
     setSelectedCategories(player.categories);
     setPartnerId(player.partnerId);
     setSeeded(player.seeded);
@@ -216,11 +247,11 @@ export default function TournamentSetupScreen() {
     const nextFieldErrors: { name?: string; categories?: string } = {};
 
     if (!trimmedName) {
-      nextFieldErrors.name = 'Player name is required.';
+      nextFieldErrors.name = "Player name is required.";
     }
 
     if (selectedCategories.length === 0) {
-      nextFieldErrors.categories = 'Select at least one category.';
+      nextFieldErrors.categories = "Select at least one category.";
     }
 
     if (Object.keys(nextFieldErrors).length > 0) {
@@ -232,10 +263,14 @@ export default function TournamentSetupScreen() {
 
     const normalized = normalizeName(trimmedName);
     const duplicate = players.find(
-      (player) => normalizeName(player.name) === normalized && player.id !== editingPlayerId,
+      (player) =>
+        normalizeName(player.name) === normalized &&
+        player.id !== editingPlayerId,
     );
     if (duplicate) {
-      setFieldErrors({ name: `"${trimmedName}" already exists in the player list.` });
+      setFieldErrors({
+        name: `"${trimmedName}" already exists in the player list.`,
+      });
       return;
     }
 
@@ -246,18 +281,18 @@ export default function TournamentSetupScreen() {
 
     if (resolvedPartnerId) {
       if (resolvedPartnerId === editingPlayerId) {
-        setError('A player cannot be partnered with themselves.');
+        setError("A player cannot be partnered with themselves.");
         return;
       }
 
       const partner = players.find((player) => player.id === resolvedPartnerId);
       if (!partner) {
-        setError('Selected partner no longer exists. Please choose again.');
+        setError("Selected partner no longer exists. Please choose again.");
         return;
       }
 
       if (partner.partnerId && partner.partnerId !== editingPlayerId) {
-        setError('Selected partner is already paired with another player.');
+        setError("Selected partner is already paired with another player.");
         return;
       }
 
@@ -270,7 +305,7 @@ export default function TournamentSetupScreen() {
 
       if (compatibleCategories.length === 0) {
         setError(
-          'Selected partner is not compatible with your chosen doubles categories. Choose another partner or update categories.',
+          "Selected partner is not compatible with your chosen doubles categories. Choose another partner or update categories.",
         );
         return;
       }
@@ -280,9 +315,13 @@ export default function TournamentSetupScreen() {
       setSaving(true);
 
       if (editingPlayerId) {
-        const previous = players.find((player) => player.id === editingPlayerId);
+        const previous = players.find(
+          (player) => player.id === editingPlayerId,
+        );
         if (!previous) {
-          setError('Player record is not available anymore. Please refresh and try again.');
+          setError(
+            "Player record is not available anymore. Please refresh and try again.",
+          );
           return;
         }
 
@@ -302,7 +341,9 @@ export default function TournamentSetupScreen() {
         }
 
         if (resolvedPartnerId) {
-          await updatePlayer(id, resolvedPartnerId, { partnerId: editingPlayerId });
+          await updatePlayer(id, resolvedPartnerId, {
+            partnerId: editingPlayerId,
+          });
         }
       } else {
         const playerData = {
@@ -323,18 +364,20 @@ export default function TournamentSetupScreen() {
 
       clearForm();
     } catch (value) {
-      const message = value instanceof Error ? value.message : 'Failed to add player';
+      const message =
+        value instanceof Error ? value.message : "Failed to add player";
       setError(message);
     } finally {
       setSaving(false);
     }
   };
 
-  const handleDownloadTemplate = async (type: 'singles' | 'doubles') => {
+  const handleDownloadTemplate = async (type: "singles" | "doubles") => {
     try {
       await downloadTemplateExcel(type);
     } catch (value) {
-      const message = value instanceof Error ? value.message : 'Failed to download template';
+      const message =
+        value instanceof Error ? value.message : "Failed to download template";
       setError(message);
     }
   };
@@ -348,8 +391,8 @@ export default function TournamentSetupScreen() {
       setImporting(true);
       const result = await DocumentPicker.getDocumentAsync({
         type: [
-          'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-          'application/vnd.ms-excel',
+          "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+          "application/vnd.ms-excel",
         ],
         copyToCacheDirectory: true,
       });
@@ -360,28 +403,30 @@ export default function TournamentSetupScreen() {
       }
 
       const asset = result.assets[0];
-      const parsed =
-        Platform.OS === 'web'
-          ? parsePlayersWorkbookFromArrayBuffer(
-            await (asset.file
-              ? asset.file.arrayBuffer()
-              : fetch(asset.uri).then((response) => response.arrayBuffer())),
-            enabledCategories,
-          )
-          : parsePlayersWorkbookFromBase64(
-            await FileSystem.readAsStringAsync(asset.uri, {
-              encoding: FileSystem.EncodingType.Base64,
-            }),
-            enabledCategories,
-          );
+      const parsed: ParseResult =
+        Platform.OS === "web"
+          ? await parsePlayersWorkbookFromArrayBuffer(
+              await (asset.file
+                ? asset.file.arrayBuffer()
+                : fetch(asset.uri).then((response) => response.arrayBuffer())),
+              enabledCategories,
+            )
+          : await parsePlayersWorkbookFromBase64(
+              await FileSystem.readAsStringAsync(asset.uri, {
+                encoding: FileSystem.EncodingType.Base64,
+              }),
+              enabledCategories,
+            );
 
       if (parsed.players.length === 0) {
-        setError('No valid player rows found in the uploaded file.');
+        setError("No valid player rows found in the uploaded file.");
         return;
       }
 
       const partnerTokens = new Map<string, string[]>();
-      const existingNames = new Set(players.map((player) => normalizeName(player.name)));
+      const existingNames = new Set(
+        players.map((player) => normalizeName(player.name)),
+      );
       const importWarnings = [...parsed.warnings];
       let added = 0;
       for (const imported of parsed.players) {
@@ -418,13 +463,14 @@ export default function TournamentSetupScreen() {
 
       const warningText =
         importWarnings.length > 0
-          ? ` | Warnings: ${importWarnings.slice(0, 3).join(' ')}`
-          : '';
+          ? ` | Warnings: ${importWarnings.slice(0, 3).join(" ")}`
+          : "";
       setImportSummary(
         `Imported ${added} players (${parsed.mode.toUpperCase()} mode detected).${warningText}`,
       );
     } catch (value) {
-      const message = value instanceof Error ? value.message : 'Bulk import failed';
+      const message =
+        value instanceof Error ? value.message : "Bulk import failed";
       setError(message);
     } finally {
       setImporting(false);
@@ -443,21 +489,22 @@ export default function TournamentSetupScreen() {
         }
         await deletePlayer(id, player.id);
       } catch (value) {
-        const errorMessage = value instanceof Error ? value.message : 'Delete failed';
+        const errorMessage =
+          value instanceof Error ? value.message : "Delete failed";
         setError(errorMessage);
       }
     };
 
-    if (Platform.OS === 'web') {
+    if (Platform.OS === "web") {
       if (globalThis.confirm(message)) {
         void doDelete();
       }
       return;
     }
 
-    Alert.alert('Delete player?', message, [
-      { text: 'Cancel', style: 'cancel' },
-      { text: 'Delete', style: 'destructive', onPress: () => void doDelete() },
+    Alert.alert("Delete player?", message, [
+      { text: "Cancel", style: "cancel" },
+      { text: "Delete", style: "destructive", onPress: () => void doDelete() },
     ]);
   };
 
@@ -471,7 +518,7 @@ export default function TournamentSetupScreen() {
     const exists = players.some((player) => player.id === editingPlayerId);
     if (!exists) {
       clearForm();
-      setError('The player being edited was removed. Form has been reset.');
+      setError("The player being edited was removed. Form has been reset.");
     }
   }, [editingPlayerId, players]);
 
@@ -479,7 +526,8 @@ export default function TournamentSetupScreen() {
     if (selectedCategories.length === 0) return;
     const allowed = new Set(enabledCategories);
     const next = selectedCategories.filter(
-      (category) => allowed.has(category) && isCategoryAllowedForGender(category, gender),
+      (category) =>
+        allowed.has(category) && isCategoryAllowedForGender(category, gender),
     );
     if (next.length !== selectedCategories.length) {
       setSelectedCategories(next);
@@ -512,7 +560,9 @@ export default function TournamentSetupScreen() {
   if (!tournament) {
     return (
       <SafeAreaView style={styles.centered}>
-        <Text style={styles.errorText}>{tournamentError ?? 'Tournament not found.'}</Text>
+        <Text style={styles.errorText}>
+          {tournamentError ?? "Tournament not found."}
+        </Text>
       </SafeAreaView>
     );
   }
@@ -530,7 +580,9 @@ export default function TournamentSetupScreen() {
         </View>
 
         {error ? <Text style={styles.errorBanner}>{error}</Text> : null}
-        {importSummary ? <Text style={styles.successBanner}>{importSummary}</Text> : null}
+        {importSummary ? (
+          <Text style={styles.successBanner}>{importSummary}</Text>
+        ) : null}
 
         <View style={{ marginBottom: 24 }}>
           <AppCard>
@@ -545,7 +597,9 @@ export default function TournamentSetupScreen() {
                 <Text style={styles.metricLabel}>Seeded</Text>
               </View>
               <View style={styles.metricCard}>
-                <Text style={styles.metricValue}>{Math.floor(pairedCount / 2)}</Text>
+                <Text style={styles.metricValue}>
+                  {Math.floor(pairedCount / 2)}
+                </Text>
                 <Text style={styles.metricLabel}>Pairs</Text>
               </View>
             </View>
@@ -557,7 +611,8 @@ export default function TournamentSetupScreen() {
             <AppCard>
               <Text style={styles.sectionTitle}>Register Player</Text>
               <Text style={styles.helpText}>
-                Add players one by one or edit existing players. Partner linking is available only when a doubles category is selected.
+                Add players one by one or edit existing players. Partner linking
+                is available only when a doubles category is selected.
               </Text>
 
               <AppInput
@@ -565,7 +620,8 @@ export default function TournamentSetupScreen() {
                 value={name}
                 onChangeText={(text) => {
                   setName(text);
-                  if (fieldErrors.name) setFieldErrors((prev) => ({ ...prev, name: undefined }));
+                  if (fieldErrors.name)
+                    setFieldErrors((prev) => ({ ...prev, name: undefined }));
                 }}
                 placeholder="Enter player name"
                 errorText={fieldErrors.name}
@@ -580,24 +636,47 @@ export default function TournamentSetupScreen() {
 
               <Text style={styles.label}>Gender</Text>
               <View style={styles.segmented}>
-                {(['M', 'F'] as PlayerGender[]).map((value) => (
+                {(["M", "F"] as PlayerGender[]).map((value) => (
                   <Pressable
                     key={value}
-                    style={[styles.segment, gender === value && styles.segmentActive]}
+                    style={[
+                      styles.segment,
+                      gender === value && styles.segmentActive,
+                    ]}
                     onPress={() => setGender(value)}
                   >
-                    <Text style={[styles.segmentText, gender === value && styles.segmentTextActive]}>
+                    <Text
+                      style={[
+                        styles.segmentText,
+                        gender === value && styles.segmentTextActive,
+                      ]}
+                    >
                       {toPlayerGenderLabel(value)}
                     </Text>
                   </Pressable>
                 ))}
               </View>
 
-              <Text style={[styles.label, fieldErrors.categories ? styles.labelError : undefined]}>Categories</Text>
-              <View style={[styles.chipsWrap, fieldErrors.categories ? styles.chipsWrapError : undefined]}>
+              <Text
+                style={[
+                  styles.label,
+                  fieldErrors.categories ? styles.labelError : undefined,
+                ]}
+              >
+                Categories
+              </Text>
+              <View
+                style={[
+                  styles.chipsWrap,
+                  fieldErrors.categories ? styles.chipsWrapError : undefined,
+                ]}
+              >
                 {enabledCategories.map((category) => {
                   const selected = selectedCategories.includes(category);
-                  const disabled = !isCategoryAllowedForGender(category, gender);
+                  const disabled = !isCategoryAllowedForGender(
+                    category,
+                    gender,
+                  );
                   return (
                     <Pressable
                       key={category}
@@ -608,7 +687,11 @@ export default function TournamentSetupScreen() {
                       ]}
                       onPress={() => {
                         toggleCategory(category);
-                        if (fieldErrors.categories) setFieldErrors((prev) => ({ ...prev, categories: undefined }));
+                        if (fieldErrors.categories)
+                          setFieldErrors((prev) => ({
+                            ...prev,
+                            categories: undefined,
+                          }));
                       }}
                       disabled={disabled}
                     >
@@ -625,7 +708,11 @@ export default function TournamentSetupScreen() {
                   );
                 })}
               </View>
-              {fieldErrors.categories ? <Text style={styles.fieldErrorText}>{fieldErrors.categories}</Text> : null}
+              {fieldErrors.categories ? (
+                <Text style={styles.fieldErrorText}>
+                  {fieldErrors.categories}
+                </Text>
+              ) : null}
 
               <View style={styles.switchRow}>
                 <Text style={styles.label}>Seeded Player</Text>
@@ -636,20 +723,38 @@ export default function TournamentSetupScreen() {
               {partnerSelectionEnabled ? (
                 <View style={styles.partnerWrap}>
                   <Pressable
-                    style={[styles.partnerOption, partnerId === null && styles.partnerOptionActive]}
+                    style={[
+                      styles.partnerOption,
+                      partnerId === null && styles.partnerOptionActive,
+                    ]}
                     onPress={() => setPartnerId(null)}
                   >
-                    <Text style={[styles.partnerText, partnerId === null && styles.partnerTextActive]}>
+                    <Text
+                      style={[
+                        styles.partnerText,
+                        partnerId === null && styles.partnerTextActive,
+                      ]}
+                    >
                       No Partner
                     </Text>
                   </Pressable>
                   {availablePartners.map((candidate) => (
                     <Pressable
                       key={candidate.id}
-                      style={[styles.partnerOption, partnerId === candidate.id && styles.partnerOptionActive]}
+                      style={[
+                        styles.partnerOption,
+                        partnerId === candidate.id &&
+                          styles.partnerOptionActive,
+                      ]}
                       onPress={() => setPartnerId(candidate.id)}
                     >
-                      <Text style={[styles.partnerText, partnerId === candidate.id && styles.partnerTextActive]}>
+                      <Text
+                        style={[
+                          styles.partnerText,
+                          partnerId === candidate.id &&
+                            styles.partnerTextActive,
+                        ]}
+                      >
                         {candidate.name}
                       </Text>
                       <Text style={styles.partnerSubtext}>
@@ -665,18 +770,29 @@ export default function TournamentSetupScreen() {
                     </Pressable>
                   ))}
                   {availablePartners.length === 0 ? (
-                    <Text style={styles.helpText}>No compatible partner is currently available.</Text>
+                    <Text style={styles.helpText}>
+                      No compatible partner is currently available.
+                    </Text>
                   ) : null}
                 </View>
               ) : (
                 <Text style={styles.helpText}>
-                  Select at least one doubles category to enable partner pairing.
+                  Select at least one doubles category to enable partner
+                  pairing.
                 </Text>
               )}
 
               <View style={styles.actionRow}>
                 <AppButton
-                  label={saving ? (editingPlayer ? 'Saving...' : 'Adding...') : editingPlayer ? 'Save Player' : 'Add Player'}
+                  label={
+                    saving
+                      ? editingPlayer
+                        ? "Saving..."
+                        : "Adding..."
+                      : editingPlayer
+                        ? "Save Player"
+                        : "Add Player"
+                  }
                   onPress={() => void handleSavePlayer()}
                   disabled={saving}
                   style={styles.flex1}
@@ -697,22 +813,23 @@ export default function TournamentSetupScreen() {
             <AppCard>
               <Text style={styles.sectionTitle}>Bulk Import (Excel)</Text>
               <Text style={styles.helpText}>
-                Download a template, fill player rows in Excel, then upload. Import auto-detects singles vs doubles format.
+                Download a template, fill player rows in Excel, then upload.
+                Import auto-detects singles vs doubles format.
               </Text>
               <View style={styles.templateActions}>
                 <AppButton
                   variant="secondary"
                   label="Download Singles Template"
-                  onPress={() => void handleDownloadTemplate('singles')}
+                  onPress={() => void handleDownloadTemplate("singles")}
                 />
                 <AppButton
                   variant="secondary"
                   label="Download Doubles Template"
-                  onPress={() => void handleDownloadTemplate('doubles')}
+                  onPress={() => void handleDownloadTemplate("doubles")}
                 />
               </View>
               <AppButton
-                label={importing ? 'Importing...' : 'Upload Excel File'}
+                label={importing ? "Importing..." : "Upload Excel File"}
                 onPress={() => void handleBulkImport()}
                 disabled={importing}
               />
@@ -720,9 +837,10 @@ export default function TournamentSetupScreen() {
           </View>
 
           <View style={[styles.rightColumn, isWide && { flex: 1, zIndex: 1 }]}>
-
             <AppCard>
-              <Text style={styles.sectionTitle}>Registered Players ({filteredPlayers.length})</Text>
+              <Text style={styles.sectionTitle}>
+                Registered Players ({filteredPlayers.length})
+              </Text>
               <AppInput
                 label="Search Players"
                 value={searchQuery}
@@ -739,7 +857,10 @@ export default function TournamentSetupScreen() {
           </View>
         </View>
 
-        <Link href={{ pathname: '/(organizer)/[id]/schedule', params: { id } }} style={styles.nextLink}>
+        <Link
+          href={{ pathname: "/(organizer)/[id]/schedule", params: { id } }}
+          style={styles.nextLink}
+        >
           Continue to Schedule
         </Link>
       </ScrollView>
@@ -752,149 +873,124 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: theme.colors.background,
   },
-  backgroundLayer: {
-    ...StyleSheet.absoluteFillObject,
-    overflow: 'hidden',
-  },
-  glowOrb: {
-    position: 'absolute',
-    borderRadius: theme.radius.full,
-    opacity: 0.15,
-    ...(typeof window !== 'undefined' && {
-      filter: 'blur(100px)',
-    }),
-  },
-  glowOrbTop: {
-    width: 600,
-    height: 600,
-    top: -200,
-    right: -200,
-    backgroundColor: '#3B82F6', // Deep vibrant blue
-  },
-  glowOrbBottom: {
-    width: 500,
-    height: 500,
-    bottom: -150,
-    left: -150,
-    backgroundColor: '#10B981', // Neon emerald
-  },
+  // Old glow-orb / background-layer keys retained to keep refs valid but
+  // rendered as no-ops in the Nike-style theme.
+  backgroundLayer: { display: 'none' },
+  glowOrb: { display: 'none' },
+  glowOrbTop: { display: 'none' },
+  glowOrbBottom: { display: 'none' },
   centered: {
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: theme.colors.background,
-    padding: 24,
+    padding: theme.spacing.xl,
   },
   content: {
-    paddingHorizontal: 24,
-    paddingTop: 24,
-    paddingBottom: 40,
-    gap: 20,
+    paddingHorizontal: theme.spacing.xl,
+    paddingTop: theme.spacing.xl,
+    paddingBottom: 48,
+    gap: theme.spacing.lg,
     width: '100%',
     maxWidth: 1200,
     alignSelf: 'center',
   },
-  header: {
-    gap: 4,
-  },
+  header: { gap: 4, marginBottom: 4 },
   splitLayout: {
     flexDirection: 'row',
     alignItems: 'flex-start',
-    gap: 24,
+    gap: theme.spacing.xl,
   },
   mobileLayout: {
     flexDirection: 'column',
-    gap: 24,
+    gap: theme.spacing.lg,
   },
-  leftColumn: {
-    gap: 24,
-  },
-  rightColumn: {
-    gap: 24,
-  },
+  leftColumn: { gap: theme.spacing.lg },
+  rightColumn: { gap: theme.spacing.lg },
   title: {
-    fontSize: 32,
+    fontSize: 36,
     fontWeight: '900',
-    color: '#FFFFFF',
-    letterSpacing: -0.5,
+    color: theme.colors.text,
+    letterSpacing: -1,
   },
   meta: {
-    marginTop: -8,
-    color: '#94A3B8',
-    fontWeight: '600',
-    fontSize: 16,
-  },
-  errorText: {
-    color: '#EF4444',
-    fontWeight: '700',
-  },
-  errorBanner: {
-    color: '#EF4444',
-    backgroundColor: 'rgba(239, 68, 68, 0.1)',
-    borderColor: 'rgba(239, 68, 68, 0.3)',
-    borderWidth: 1,
-    borderRadius: 12,
-    padding: 12,
-    fontWeight: '700',
-  },
-  successBanner: {
-    color: '#10B981',
-    backgroundColor: 'rgba(16, 185, 129, 0.1)',
-    borderColor: 'rgba(16, 185, 129, 0.3)',
-    borderWidth: 1,
-    borderRadius: 12,
-    padding: 12,
-    fontWeight: '700',
-  },
-  helpText: {
-    color: '#94A3B8',
-    fontWeight: '600',
-    fontSize: 12,
-  },
-  templateActions: {
-    gap: 8,
-  },
-  sectionTitle: {
-    color: '#F1F5F9',
-    fontWeight: '900',
-    fontSize: 16,
-  },
-  label: {
-    color: '#CBD5E1',
-    fontWeight: '800',
-  },
-  segmented: {
-    flexDirection: 'row',
-    backgroundColor: 'rgba(15, 23, 42, 0.6)',
-    borderRadius: 12,
-    padding: 4,
-    gap: 4,
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.05)',
-  },
-  segment: {
-    flex: 1,
-    minHeight: 46,
-    borderRadius: 8,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  segmentActive: {
-    backgroundColor: 'rgba(59, 130, 246, 0.15)',
-    borderColor: 'rgba(59, 130, 246, 0.4)',
-    borderWidth: 1,
-    ...(typeof window !== 'undefined' && {
-      boxShadow: '0 2px 8px rgba(59, 130, 246, 0.2)',
-    }),
-  },
-  segmentText: {
-    color: '#94A3B8',
+    marginTop: -4,
+    color: theme.colors.textMuted,
     fontWeight: '600',
     fontSize: 14,
   },
-  segmentTextActive: {
-    color: '#60A5FA',
+  errorText: {
+    color: theme.colors.danger,
+    fontWeight: '700',
+  },
+  errorBanner: {
+    color: theme.colors.danger,
+    backgroundColor: theme.colors.dangerSoft,
+    borderLeftWidth: 3,
+    borderLeftColor: theme.colors.danger,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    fontWeight: '700',
+    fontSize: 13,
+  },
+  successBanner: {
+    color: theme.colors.text,
+    backgroundColor: theme.colors.successSoft,
+    borderLeftWidth: 3,
+    borderLeftColor: theme.colors.success,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    fontWeight: '700',
+    fontSize: 13,
+  },
+  helpText: {
+    color: theme.colors.textMuted,
+    fontWeight: '500',
+    fontSize: 12,
+    lineHeight: 17,
+  },
+  templateActions: { gap: 8 },
+  sectionTitle: {
+    color: theme.colors.text,
+    fontWeight: '900',
+    fontSize: 12,
+    letterSpacing: 1.4,
+    textTransform: 'uppercase',
+  },
+  label: {
+    color: theme.colors.text,
     fontWeight: '800',
+    fontSize: 11,
+    letterSpacing: 1.2,
+    textTransform: 'uppercase',
+  },
+  segmented: {
+    flexDirection: 'row',
+    borderWidth: 1.5,
+    borderColor: theme.colors.border,
+    backgroundColor: theme.colors.surface,
+  },
+  segment: {
+    flex: 1,
+    minHeight: 44,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 8,
+    borderRightWidth: 1,
+    borderRightColor: theme.colors.border,
+  },
+  segmentActive: {
+    backgroundColor: theme.colors.text,
+  },
+  segmentText: {
+    color: theme.colors.text,
+    fontWeight: '700',
+    fontSize: 13,
+    letterSpacing: 0.4,
+  },
+  segmentTextActive: {
+    color: theme.colors.textInverse,
+    fontWeight: '900',
   },
   chipsWrap: {
     flexDirection: 'row',
@@ -902,139 +998,125 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   chip: {
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.1)',
-    borderRadius: 999,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    backgroundColor: 'rgba(30, 41, 59, 0.5)',
+    borderWidth: 1.5,
+    borderColor: theme.colors.border,
+    borderRadius: theme.radius.full,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    backgroundColor: theme.colors.surface,
   },
   chipActive: {
-    borderColor: 'rgba(59, 130, 246, 0.5)',
-    backgroundColor: 'rgba(59, 130, 246, 0.1)',
+    borderColor: theme.colors.text,
+    backgroundColor: theme.colors.text,
   },
   chipDisabled: {
-    opacity: 0.3,
+    opacity: 0.35,
   },
   chipText: {
-    color: '#CBD5E1',
+    color: theme.colors.text,
     fontWeight: '700',
+    fontSize: 13,
+    letterSpacing: 0.4,
   },
   chipTextActive: {
-    color: '#60A5FA',
-    fontWeight: '800',
+    color: theme.colors.textInverse,
+    fontWeight: '900',
   },
   chipTextDisabled: {
-    color: '#475569',
+    color: theme.colors.textMuted,
   },
   switchRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.1)',
-    borderRadius: 12,
-    backgroundColor: 'rgba(15, 23, 42, 0.4)',
-    paddingHorizontal: 16,
+    borderTopWidth: 1,
+    borderTopColor: theme.colors.border,
+    paddingTop: 12,
+    paddingBottom: 4,
+  },
+  partnerWrap: { gap: 8 },
+  partnerOption: {
+    borderWidth: 1.5,
+    borderColor: theme.colors.border,
+    backgroundColor: theme.colors.surface,
+    paddingHorizontal: 14,
     paddingVertical: 12,
   },
-  partnerWrap: {
-    gap: 8,
-  },
-  partnerOption: {
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.1)',
-    borderRadius: 12,
-    backgroundColor: 'rgba(30, 41, 59, 0.5)',
-    paddingHorizontal: 16,
-    paddingVertical: 14,
-  },
   partnerOptionActive: {
-    borderColor: 'rgba(16, 185, 129, 0.4)',
-    backgroundColor: 'rgba(16, 185, 129, 0.1)',
+    borderColor: theme.colors.text,
+    backgroundColor: theme.colors.surfaceSoft,
   },
   partnerText: {
-    color: '#E2E8F0',
+    color: theme.colors.text,
     fontWeight: '700',
-    fontSize: 15,
+    fontSize: 14,
   },
   partnerTextActive: {
-    color: '#10B981',
+    color: theme.colors.text,
+    fontWeight: '900',
   },
   partnerSubtext: {
-    marginTop: 4,
-    color: '#94A3B8',
-    fontWeight: '600',
-    fontSize: 13,
+    marginTop: 2,
+    color: theme.colors.textMuted,
+    fontWeight: '500',
+    fontSize: 12,
   },
   metricsRow: {
     flexDirection: 'row',
-    gap: 12,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
   },
   metricCard: {
     flex: 1,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.1)',
-    backgroundColor: 'rgba(30, 41, 59, 0.5)',
-    paddingVertical: 16,
+    paddingVertical: 18,
     alignItems: 'center',
     justifyContent: 'center',
-    ...(typeof window !== 'undefined' && {
-      backdropFilter: 'blur(12px)',
-    }),
+    borderRightWidth: 1,
+    borderRightColor: theme.colors.border,
+    gap: 4,
   },
   metricValue: {
-    color: '#F8FAFC',
+    color: theme.colors.text,
     fontWeight: '900',
-    fontSize: 24,
+    fontSize: 28,
+    letterSpacing: -0.5,
   },
   metricLabel: {
-    color: '#94A3B8',
-    fontWeight: '700',
-    fontSize: 13,
+    color: theme.colors.textMuted,
+    fontWeight: '800',
+    fontSize: 11,
     textTransform: 'uppercase',
-    letterSpacing: 0.5,
-    marginTop: 4,
+    letterSpacing: 1.4,
   },
   nextLink: {
-    color: '#FFFFFF',
-    backgroundColor: theme.colors.focus,
-    borderRadius: 12,
+    color: theme.colors.textInverse,
+    backgroundColor: theme.colors.text,
+    borderRadius: theme.radius.full,
     textAlign: 'center',
-    paddingVertical: 16,
-    fontWeight: '900',
-    fontSize: 16,
+    paddingVertical: 14,
+    fontWeight: '800',
+    fontSize: 14,
+    letterSpacing: 0.4,
     overflow: 'hidden',
-    ...(typeof window !== 'undefined' && {
-      boxShadow: '0 4px 14px 0 rgba(16, 185, 129, 0.39)',
-    }),
   },
   actionRow: {
     flexDirection: 'row',
-    gap: 12,
+    gap: 8,
     marginTop: 8,
   },
-  flex1: {
-    flex: 1,
-  },
-  cancelButton: {
-    minWidth: 100,
-  },
-  labelError: {
-    color: '#EF4444',
-  },
+  flex1: { flex: 1 },
+  cancelButton: { minWidth: 100 },
+  labelError: { color: theme.colors.danger },
   chipsWrapError: {
     borderWidth: 1,
-    borderColor: 'rgba(239, 68, 68, 0.5)',
-    borderRadius: 12,
+    borderColor: theme.colors.danger,
     padding: 8,
-    backgroundColor: 'rgba(239, 68, 68, 0.05)',
+    backgroundColor: theme.colors.dangerSoft,
   },
   fieldErrorText: {
-    color: '#EF4444',
+    color: theme.colors.danger,
     fontSize: 12,
-    fontWeight: '600',
+    fontWeight: '700',
     marginTop: -2,
   },
 });

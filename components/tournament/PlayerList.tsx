@@ -31,8 +31,8 @@ export function PlayerList({
           <View style={styles.playerInfo}>
             <Text style={styles.playerName}>{player.name}</Text>
             <Text style={styles.playerMeta}>
-              {toPlayerGenderLabel(player.gender)} | {player.categories.map(toCategoryLabel).join(', ')}
-              {player.department ? ` | ${player.department}` : ''}
+              {toPlayerGenderLabel(player.gender)} · {player.categories.map(toCategoryLabel).join(', ')}
+              {player.department ? ` · ${player.department}` : ''}
             </Text>
             {player.partnerId ? (
               <Text style={styles.partnerMeta}>
@@ -44,12 +44,12 @@ export function PlayerList({
           {(onEdit || onDelete) && (
             <View style={styles.playerActions}>
               {onEdit ? (
-                <Pressable style={styles.editButton} onPress={() => onEdit(player)}>
+                <Pressable style={({ pressed }) => [styles.editButton, pressed && styles.btnPressed]} onPress={() => onEdit(player)}>
                   <Text style={styles.editButtonText}>Edit</Text>
                 </Pressable>
               ) : null}
               {onDelete ? (
-                <Pressable style={styles.deleteButton} onPress={() => onDelete(player)}>
+                <Pressable style={({ pressed }) => [styles.deleteButton, pressed && styles.btnPressed]} onPress={() => onDelete(player)}>
                   <Text style={styles.deleteButtonText}>Delete</Text>
                 </Pressable>
               ) : null}
@@ -63,20 +63,21 @@ export function PlayerList({
 
 const styles = StyleSheet.create({
   list: {
-    gap: 8,
+    borderTopWidth: 1,
+    borderTopColor: theme.colors.border,
   },
   emptyText: {
-    color: '#94A3B8',
-    fontWeight: '700',
+    color: theme.colors.textMuted,
+    fontWeight: '600',
+    fontSize: 13,
   },
   playerRow: {
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.1)',
-    borderRadius: 10,
-    backgroundColor: 'rgba(30, 41, 59, 0.5)',
-    padding: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: theme.colors.border,
+    paddingHorizontal: 4,
+    paddingVertical: 12,
     flexDirection: 'row',
-    gap: 10,
+    gap: 12,
     alignItems: 'center',
   },
   playerInfo: {
@@ -85,45 +86,54 @@ const styles = StyleSheet.create({
   },
   playerName: {
     color: theme.colors.text,
-    fontWeight: '900',
+    fontWeight: '800',
+    fontSize: 15,
   },
   playerMeta: {
-    color: '#94A3B8',
-    fontWeight: '600',
+    color: theme.colors.textMuted,
+    fontWeight: '500',
     fontSize: 12,
   },
   partnerMeta: {
-    color: '#10B981',
+    color: theme.colors.text,
     fontWeight: '700',
     fontSize: 12,
   },
   playerActions: {
+    flexDirection: 'row',
     gap: 6,
   },
   editButton: {
-    minHeight: 36,
-    borderRadius: 8,
-    paddingHorizontal: 12,
+    minHeight: 32,
+    borderRadius: theme.radius.full,
+    paddingHorizontal: 14,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#0EA5E9',
+    borderWidth: 1.5,
+    borderColor: theme.colors.text,
+    backgroundColor: theme.colors.surface,
   },
   editButtonText: {
-    color: '#FFFFFF',
+    color: theme.colors.text,
     fontWeight: '800',
     fontSize: 12,
+    letterSpacing: 0.4,
   },
   deleteButton: {
-    minHeight: 36,
-    borderRadius: 8,
-    paddingHorizontal: 12,
+    minHeight: 32,
+    borderRadius: theme.radius.full,
+    paddingHorizontal: 14,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#B91C1C',
+    backgroundColor: theme.colors.danger,
   },
   deleteButtonText: {
     color: '#FFFFFF',
     fontWeight: '800',
     fontSize: 12,
+    letterSpacing: 0.4,
+  },
+  btnPressed: {
+    opacity: 0.85,
   },
 });

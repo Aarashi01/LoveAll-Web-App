@@ -1,132 +1,175 @@
-import { StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { AppButton } from '@/components/ui/AppButton';
-import { AppCard } from '@/components/ui/AppCard';
 import { theme, toTournamentStatusLabel } from '@/constants/theme';
 import { type TournamentDocument } from '@/lib/firestore/types';
 
 type TournamentCardProps = {
   tournament: TournamentDocument;
-  deleting?: boolean;
   onManage?: () => void;
   onResults?: () => void;
-  onDelete?: () => void;
+  onWatchParty?: () => void;
 };
+
+function getStatusStyle(status: TournamentDocument['status']) {
+  if (status === 'group_stage' || status === 'knockout') return 'active';
+  if (status === 'completed') return 'completed';
+  return 'draft';
+}
 
 export function TournamentCard({
   tournament,
-  deleting = false,
   onManage,
   onResults,
-  onDelete,
+  onWatchParty,
 }: TournamentCardProps) {
   const statusLabel = toTournamentStatusLabel(tournament.status);
+  const statusStyle = getStatusStyle(tournament.status);
+  const isActive = statusStyle === 'active';
+  const isCompleted = statusStyle === 'completed';
 
   return (
-    <AppCard style={styles.card}>
-      <View style={styles.headerRow}>
-        <View style={styles.titleWrap}>
-          <Text style={styles.title}>{tournament.name}</Text>
-          <Text style={styles.slug}>/{tournament.slug}</Text>
+    <View style={styles.card}>
+      <View style={styles.statusBar}>
+        <View style={styles.statusGroup}>
+          <View
+            style={[
+              styles.statusDot,
+              isActive && styles.statusDotActive,
+              isCompleted && styles.statusDotCompleted,
+            ]}
+          />
+          <Text style={styles.statusText}>{statusLabel.toUpperCase()}</Text>
         </View>
-        <View
-          style={[
-            styles.statusChip,
-            tournament.status === 'group_stage' && styles.statusChipActive,
-            tournament.status === 'knockout' && styles.statusChipActive,
-            tournament.status === 'completed' && styles.statusChipCompleted,
-          ]}
-        >
-          <Text style={styles.statusText}>{statusLabel}</Text>
-        </View>
+        <Text style={styles.visibilityText}>
+          {tournament.publicViewEnabled ? 'PUBLIC' : 'PRIVATE'}
+        </Text>
+      </View>
+
+      <View style={styles.body}>
+        <Text style={styles.title} numberOfLines={2}>{tournament.name}</Text>
+        <Text style={styles.slug}>/{tournament.slug}</Text>
       </View>
 
       <View style={styles.actionsRow}>
+        {!isCompleted && (
+          <AppButton
+            variant={isActive ? 'primary' : 'secondary'}
+            label={isActive ? 'Manage · PIN' : 'Manage'}
+            style={styles.action}
+            onPress={onManage ?? (() => undefined)}
+          />
+        )}
+
         <AppButton
-          variant="secondary"
-          label="Manage"
-          style={styles.action}
-          onPress={onManage ?? (() => undefined)}
-        />
-        <AppButton
+          variant={isCompleted ? 'primary' : 'secondary'}
           label="Results"
           style={styles.action}
           onPress={onResults ?? (() => undefined)}
         />
-        <AppButton
-          variant="secondary"
-          label={deleting ? 'Deleting...' : 'Delete'}
-          style={[styles.action, styles.actionDanger]}
-          disabled={deleting}
-          onPress={onDelete ?? (() => undefined)}
-        />
+
+        {onWatchParty ? (
+          <Pressable onPress={onWatchParty} style={({ pressed }) => [styles.watchLink, pressed && styles.watchLinkPressed]}>
+            <Text style={styles.watchLinkText}>Watch Party →</Text>
+          </Pressable>
+        ) : null}
       </View>
-    </AppCard>
+
+      {isActive && (
+        <Text style={styles.pinHint}>Venue PIN required to manage active tournaments.</Text>
+      )}
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
   card: {
-    gap: theme.spacing.md,
+    backgroundColor: theme.colors.surface,
+    borderTopWidth: 1,
+    borderBottomWidth: 1,
+    borderColor: theme.colors.border,
+    paddingHorizontal: theme.spacing.xl,
+    paddingVertical: theme.spacing.xl,
+    gap: theme.spacing.lg,
+    ...(typeof window !== 'undefined' && ({
+      transition: 'background-color 120ms ease',
+    } as any)),
   },
-  headerRow: {
+  statusBar: {
     flexDirection: 'row',
-    alignItems: 'flex-start',
+    alignItems: 'center',
     justifyContent: 'space-between',
-    gap: theme.spacing.sm,
   },
-  titleWrap: {
-    flex: 1,
+  statusGroup: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  statusDot: {
+    width: 8,
+    height: 8,
+    borderRadius: theme.radius.full,
+    backgroundColor: theme.colors.textMuted,
+  },
+  statusDotActive: {
+    backgroundColor: theme.colors.live,
+  },
+  statusDotCompleted: {
+    backgroundColor: theme.colors.success,
+  },
+  statusText: {
+    color: theme.colors.text,
+    fontSize: 11,
+    fontWeight: '800',
+    letterSpacing: 1.4,
+  },
+  visibilityText: {
+    color: theme.colors.textMuted,
+    fontSize: 11,
+    fontWeight: '700',
+    letterSpacing: 1.4,
+  },
+  body: {
     gap: 4,
   },
   title: {
     color: theme.colors.text,
+    fontSize: 28,
     fontWeight: '900',
-    fontSize: 20,
+    letterSpacing: -0.6,
+    lineHeight: 32,
   },
   slug: {
     color: theme.colors.textMuted,
-    fontWeight: '700',
     fontSize: 13,
-  },
-  statusChip: {
-    alignSelf: 'flex-start',
-    borderWidth: 1,
-    borderColor: 'rgba(59, 130, 246, 0.3)', // Default Blue
-    backgroundColor: 'rgba(59, 130, 246, 0.15)',
-    borderRadius: theme.radius.full,
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    ...(typeof window !== 'undefined' && {
-      backdropFilter: 'blur(8px)',
-    }),
-  },
-  statusChipActive: {
-    borderColor: 'rgba(16, 185, 129, 0.4)', // Neon Green
-    backgroundColor: 'rgba(16, 185, 129, 0.15)',
-  },
-  statusChipCompleted: {
-    borderColor: 'rgba(148, 163, 184, 0.4)', // Slate
-    backgroundColor: 'rgba(148, 163, 184, 0.15)',
-  },
-  statusText: {
-    color: '#E2E8F0', // Slate 200
-    fontWeight: '800',
-    fontSize: 11,
-    textTransform: 'uppercase',
-    letterSpacing: 0.8,
+    fontWeight: '600',
   },
   actionsRow: {
     flexDirection: 'row',
-    gap: 8,
+    alignItems: 'center',
     flexWrap: 'wrap',
+    gap: 10,
   },
   action: {
-    minWidth: 116,
-    flexGrow: 1,
+    minWidth: 120,
   },
-  actionDanger: {
-    borderColor: 'rgba(239, 68, 68, 0.3)',
-    backgroundColor: 'rgba(239, 68, 68, 0.05)',
+  watchLink: {
+    paddingVertical: 12,
+    paddingHorizontal: 4,
+  },
+  watchLinkPressed: {
+    opacity: 0.6,
+  },
+  watchLinkText: {
+    color: theme.colors.text,
+    fontSize: 13,
+    fontWeight: '800',
+    letterSpacing: 0.4,
+    textDecorationLine: 'underline',
+  },
+  pinHint: {
+    color: theme.colors.textMuted,
+    fontSize: 12,
+    fontWeight: '500',
   },
 });

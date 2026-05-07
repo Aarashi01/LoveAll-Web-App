@@ -3,6 +3,7 @@ import { router } from 'expo-router';
 import { useState } from 'react';
 import { Modal, Pressable, StyleSheet, Text, View } from 'react-native';
 
+import { theme } from '@/constants/theme';
 import { useAuth } from '@/hooks/useAuth';
 
 export function ProfileMenu() {
@@ -40,7 +41,6 @@ export function ProfileMenu() {
             >
                 <Pressable style={styles.backdrop} onPress={() => setOpen(false)}>
                     <View style={styles.menuCard}>
-                        {/* User info */}
                         <View style={styles.userRow}>
                             <View style={styles.avatarLarge}>
                                 <Text style={styles.avatarLargeText}>{initials}</Text>
@@ -57,7 +57,6 @@ export function ProfileMenu() {
 
                         <View style={styles.divider} />
 
-                        {/* Menu items */}
                         <Pressable
                             style={({ pressed }) => [styles.menuItem, pressed && styles.menuItemPressed]}
                             onPress={() => {
@@ -65,7 +64,7 @@ export function ProfileMenu() {
                                 router.push('/(organizer)/dashboard');
                             }}
                         >
-                            <MaterialCommunityIcons name="view-dashboard-outline" size={20} color="#94A3B8" />
+                            <MaterialCommunityIcons name="view-dashboard-outline" size={20} color={theme.colors.text} />
                             <Text style={styles.menuItemText}>Dashboard</Text>
                         </Pressable>
 
@@ -75,8 +74,8 @@ export function ProfileMenu() {
                             style={({ pressed }) => [styles.menuItem, pressed && styles.menuItemPressed]}
                             onPress={() => void handleLogout()}
                         >
-                            <MaterialCommunityIcons name="logout" size={20} color="#EF4444" />
-                            <Text style={[styles.menuItemText, styles.logoutText]}>Log Out</Text>
+                            <MaterialCommunityIcons name="logout" size={20} color={theme.colors.danger} />
+                            <Text style={[styles.menuItemText, styles.logoutText]}>Log out</Text>
                         </Pressable>
                     </View>
                 </Pressable>
@@ -87,47 +86,38 @@ export function ProfileMenu() {
 
 const styles = StyleSheet.create({
     avatarButton: {
-        width: 36,
-        height: 36,
-        borderRadius: 18,
-        backgroundColor: 'rgba(59, 130, 246, 0.2)',
-        borderWidth: 1.5,
-        borderColor: 'rgba(59, 130, 246, 0.4)',
+        width: 38,
+        height: 38,
+        borderRadius: theme.radius.full,
+        backgroundColor: theme.colors.text,
         alignItems: 'center',
         justifyContent: 'center',
         ...(typeof window !== 'undefined' && {
             cursor: 'pointer',
-            transition: 'all 0.15s ease',
-        }),
+            transition: 'transform 120ms ease',
+        } as any),
     },
     avatarText: {
-        color: '#60A5FA',
+        color: theme.colors.textInverse,
         fontSize: 13,
         fontWeight: '900',
-        letterSpacing: 0.5,
+        letterSpacing: 0.6,
     },
     backdrop: {
         flex: 1,
-        backgroundColor: 'rgba(0, 0, 0, 0.5)',
+        backgroundColor: 'rgba(17, 17, 17, 0.18)',
         justifyContent: 'flex-start',
         alignItems: 'flex-end',
-        paddingTop: 56,
+        paddingTop: 64,
         paddingRight: 16,
-        ...(typeof window !== 'undefined' && {
-            backdropFilter: 'blur(2px)',
-        }),
     },
     menuCard: {
-        width: 260,
-        backgroundColor: 'rgba(22, 33, 54, 0.98)',
-        borderRadius: 20,
+        width: 280,
+        backgroundColor: theme.colors.surface,
+        borderRadius: theme.radius.md,
         borderWidth: 1,
-        borderColor: 'rgba(255, 255, 255, 0.1)',
+        borderColor: theme.colors.border,
         overflow: 'hidden',
-        ...(typeof window !== 'undefined' && {
-            backdropFilter: 'blur(24px)',
-            boxShadow: '0 16px 48px rgba(0, 0, 0, 0.5)',
-        }),
     },
     userRow: {
         flexDirection: 'row',
@@ -136,17 +126,15 @@ const styles = StyleSheet.create({
         padding: 16,
     },
     avatarLarge: {
-        width: 42,
-        height: 42,
-        borderRadius: 21,
-        backgroundColor: 'rgba(59, 130, 246, 0.2)',
-        borderWidth: 1.5,
-        borderColor: 'rgba(59, 130, 246, 0.4)',
+        width: 44,
+        height: 44,
+        borderRadius: theme.radius.full,
+        backgroundColor: theme.colors.text,
         alignItems: 'center',
         justifyContent: 'center',
     },
     avatarLargeText: {
-        color: '#60A5FA',
+        color: theme.colors.textInverse,
         fontSize: 16,
         fontWeight: '900',
     },
@@ -155,18 +143,18 @@ const styles = StyleSheet.create({
         gap: 2,
     },
     userName: {
-        color: '#F8FAFC',
+        color: theme.colors.text,
         fontSize: 15,
         fontWeight: '800',
     },
     userEmail: {
-        color: '#64748B',
+        color: theme.colors.textMuted,
         fontSize: 12,
-        fontWeight: '600',
+        fontWeight: '500',
     },
     divider: {
         height: 1,
-        backgroundColor: 'rgba(255, 255, 255, 0.06)',
+        backgroundColor: theme.colors.border,
     },
     menuItem: {
         flexDirection: 'row',
@@ -176,14 +164,14 @@ const styles = StyleSheet.create({
         paddingVertical: 14,
     },
     menuItemPressed: {
-        backgroundColor: 'rgba(255, 255, 255, 0.05)',
+        backgroundColor: theme.colors.surfaceSoft,
     },
     menuItemText: {
-        color: '#CBD5E1',
-        fontSize: 15,
+        color: theme.colors.text,
+        fontSize: 14,
         fontWeight: '700',
     },
     logoutText: {
-        color: '#EF4444',
+        color: theme.colors.danger,
     },
 });

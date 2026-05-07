@@ -6,10 +6,12 @@ import { theme } from '@/constants/theme';
 type AppCardProps = {
   children: ReactNode;
   style?: StyleProp<ViewStyle>;
+  inverse?: boolean;
 };
 
-export function AppCard({ children, style }: AppCardProps) {
-  return <View style={[styles.card, style]}>{children}</View>;
+// Nike-style card: paper surface, sharp corners, 1px hairline border, no blur.
+export function AppCard({ children, style, inverse = false }: AppCardProps) {
+  return <View style={[styles.card, inverse && styles.cardInverse, style]}>{children}</View>;
 }
 
 const styles = StyleSheet.create({
@@ -17,18 +19,12 @@ const styles = StyleSheet.create({
     backgroundColor: theme.colors.surface,
     borderWidth: 1,
     borderColor: theme.colors.border,
-    borderRadius: theme.radius.xl,
-    padding: theme.spacing.lg,
-    gap: theme.spacing.sm,
-    shadowColor: '#000000',
-    shadowOffset: { width: 0, height: 12 },
-    shadowOpacity: 0.25,
-    shadowRadius: 24,
-    elevation: 8,
-    // Add backdrop filter for web
-    ...(typeof window !== 'undefined' && {
-      backdropFilter: 'blur(16px)',
-      WebkitBackdropFilter: 'blur(16px)',
-    }),
+    borderRadius: theme.radius.md,
+    padding: theme.spacing.xl,
+    gap: theme.spacing.md,
+  },
+  cardInverse: {
+    backgroundColor: theme.colors.surfaceInverse,
+    borderColor: theme.colors.surfaceInverse,
   },
 });

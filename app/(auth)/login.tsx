@@ -1,51 +1,37 @@
-import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { Link, router } from 'expo-router';
-import type { ComponentProps } from 'react';
 import { useEffect, useState } from 'react';
 import {
   ActivityIndicator,
-  Image,
   SafeAreaView,
   ScrollView,
   StyleSheet,
   Text,
   View,
-  useWindowDimensions
+  useWindowDimensions,
 } from 'react-native';
 
+import { QuickMatchButton } from '@/components/quick/QuickMatchButton';
 import { AppButton } from '@/components/ui/AppButton';
-import { AppCard } from '@/components/ui/AppCard';
 import { AppInput } from '@/components/ui/AppInput';
 import { theme } from '@/constants/theme';
 import { useAuth } from '@/hooks/useAuth';
 
-const loginFeatures: Array<{
-  icon: ComponentProps<typeof MaterialCommunityIcons>['name'];
-  title: string;
-}> = [
-    {
-      icon: 'trophy-outline',
-      title: 'Brackets without spreadsheet pain',
-    },
-    {
-      icon: 'calendar-clock',
-      title: 'Scheduling and results in one flow',
-    },
-    {
-      icon: 'chart-box-outline',
-      title: 'Cleaner organizer control panel',
-    },
-  ];
+const principles = [
+  'Brackets without spreadsheet pain.',
+  'Scheduling and results in one flow.',
+  'A scoreboard your athletes actually trust.',
+];
 
 export default function LoginScreen() {
   const { user, loading, error, login } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [formError, setFormError] = useState<string | null>(null);
   const [fieldErrors, setFieldErrors] = useState<{ email?: string; password?: string }>({});
   const [submitting, setSubmitting] = useState(false);
   const { width } = useWindowDimensions();
   const isWide = width >= 980;
+  const heroFontSize = width >= 1100 ? 56 : width >= 720 ? 44 : 38;
+  const heroLineHeight = Math.round(heroFontSize * 1.05);
 
   useEffect(() => {
     if (user && !user.isAnonymous && !loading) {
@@ -54,7 +40,6 @@ export default function LoginScreen() {
   }, [loading, user]);
 
   const handleLogin = async () => {
-    setFormError(null);
     const nextFieldErrors: { email?: string; password?: string } = {};
     if (!email.trim()) nextFieldErrors.email = 'Email is required.';
     if (!password.trim()) nextFieldErrors.password = 'Password is required.';
@@ -69,7 +54,7 @@ export default function LoginScreen() {
       await login(email.trim(), password);
       router.replace('/(organizer)/dashboard');
     } catch {
-      // Error is shown from hook state.
+      // error from hook
     } finally {
       setSubmitting(false);
     }
@@ -78,99 +63,87 @@ export default function LoginScreen() {
   if (loading) {
     return (
       <SafeAreaView style={styles.centered}>
-        <ActivityIndicator size="large" />
+        <ActivityIndicator size="large" color={theme.colors.text} />
       </SafeAreaView>
     );
   }
 
-  // On mobile, show form first; on desktop, hero left + form right
-  const formSection = (
-    <AppCard style={styles.formCard}>
-      {!isWide && (
-        <View style={styles.mobileBranding}>
-          <Text style={styles.mobileAppName}>🏸 LoveAll</Text>
-          <Text style={styles.mobileTagline}>Tournament scoring made simple</Text>
-        </View>
-      )}
-      <Text style={styles.title}>Welcome back</Text>
-      <Text style={styles.subtitle}>Sign in to access your tournament workspace.</Text>
-      <AppInput
-        label="Email address"
-        autoCapitalize="none"
-        keyboardType="email-address"
-        value={email}
-        onChangeText={(text) => {
-          setEmail(text);
-          if (fieldErrors.email) setFieldErrors((prev) => ({ ...prev, email: undefined }));
-        }}
-        placeholder="you@example.com"
-        errorText={fieldErrors.email}
-      />
-      <AppInput
-        label="Password"
-        secureTextEntry
-        value={password}
-        onChangeText={(text) => {
-          setPassword(text);
-          if (fieldErrors.password) setFieldErrors((prev) => ({ ...prev, password: undefined }));
-        }}
-        placeholder="Enter your password"
-        errorText={fieldErrors.password}
-      />
-      {error ? <Text style={styles.error}>{error}</Text> : null}
-      <AppButton
-        label={submitting ? 'Signing In...' : 'Sign In'}
-        disabled={submitting}
-        onPress={() => void handleLogin()}
-        style={styles.submitButton}
-      />
-      <Link href="/(auth)/register" style={styles.link}>
-        Need an account? Create one
-      </Link>
-    </AppCard>
-  );
-
   const heroSection = (
-    <View style={styles.heroPane}>
-      {isWide && <Text style={styles.badge}>LoveAll Organizer</Text>}
-      {isWide && (
-        <Text style={styles.heroTitle}>Run every tournament with less chaos.</Text>
-      )}
-      {isWide && (
-        <Text style={styles.heroSubtitle}>
-          Keep brackets, results, and match flow in one clean workspace built for fast decisions.
-        </Text>
-      )}
-      {isWide && (
-        <Image
-          source={require('../../assets/images/splash-icon.png')}
-          style={styles.heroImage}
-          resizeMode="cover"
-        />
-      )}
-      <View style={styles.featureList}>
-        {loginFeatures.map((item) => (
-          <View key={item.title} style={styles.featureRow}>
-            <View style={styles.featureIconWrap}>
-              <MaterialCommunityIcons
-                name={item.icon}
-                size={16}
-                color={theme.colors.accent}
-              />
-            </View>
-            <Text style={styles.featureText}>{item.title}</Text>
+    <View style={[styles.hero, isWide && styles.heroWide]}>
+      <Text style={styles.eyebrow}>LoveAll · Organizer</Text>
+      <Text style={[styles.heroTitle, { fontSize: heroFontSize, lineHeight: heroLineHeight }]}>RUN THE{'\n'}TOURNAMENT.</Text>
+      <Text style={styles.heroLead}>
+        Brackets, schedules, and live scoring — built for the people running the courts, not for spreadsheets.
+      </Text>
+      <View style={styles.principles}>
+        {principles.map((line, idx) => (
+          <View key={line} style={styles.principleRow}>
+            <Text style={styles.principleNum}>{String(idx + 1).padStart(2, '0')}</Text>
+            <Text style={styles.principleText}>{line}</Text>
           </View>
         ))}
       </View>
     </View>
   );
 
+  const formSection = (
+    <View style={styles.formPane}>
+      <View style={styles.formInner}>
+        <Text style={styles.formEyebrow}>Member sign in</Text>
+        <Text style={styles.formTitle}>Welcome back.</Text>
+        <Text style={styles.formSub}>Sign in to access your tournament workspace.</Text>
+
+        <View style={styles.fields}>
+          <AppInput
+            label="Email"
+            autoCapitalize="none"
+            keyboardType="email-address"
+            value={email}
+            onChangeText={(text) => {
+              setEmail(text);
+              if (fieldErrors.email) setFieldErrors((prev) => ({ ...prev, email: undefined }));
+            }}
+            placeholder="you@example.com"
+            errorText={fieldErrors.email}
+          />
+          <AppInput
+            label="Password"
+            secureTextEntry
+            value={password}
+            onChangeText={(text) => {
+              setPassword(text);
+              if (fieldErrors.password) setFieldErrors((prev) => ({ ...prev, password: undefined }));
+            }}
+            placeholder="Enter your password"
+            errorText={fieldErrors.password}
+          />
+        </View>
+
+        {error ? <Text style={styles.error}>{error}</Text> : null}
+
+        <AppButton
+          label={submitting ? 'Signing in…' : 'Sign in'}
+          disabled={submitting}
+          onPress={() => void handleLogin()}
+        />
+
+        <Link href="/(auth)/register" style={styles.link}>
+          Not a member? Join LoveAll
+        </Link>
+
+        <View style={styles.divider}>
+          <View style={styles.dividerLine} />
+          <Text style={styles.dividerLabel}>OR</Text>
+          <View style={styles.dividerLine} />
+        </View>
+
+        <QuickMatchButton />
+      </View>
+    </View>
+  );
+
   return (
     <SafeAreaView style={styles.safeArea}>
-      <View pointerEvents="none" style={styles.backgroundLayer}>
-        <View style={[styles.glowOrb, styles.glowOrbTop]} />
-        <View style={[styles.glowOrb, styles.glowOrbBottom]} />
-      </View>
       <ScrollView contentContainerStyle={styles.scrollContent}>
         <View style={[styles.shell, isWide && styles.shellWide]}>
           {isWide ? (
@@ -195,181 +168,153 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: theme.colors.background,
   },
-  backgroundLayer: {
-    ...StyleSheet.absoluteFillObject,
-    overflow: 'hidden',
-    zIndex: 0,
-    ...(typeof window !== 'undefined' && {
-      pointerEvents: 'none',
-    }),
-  },
-  glowOrb: {
-    position: 'absolute',
-    borderRadius: theme.radius.full,
-    opacity: 0.35,
-    ...(typeof window !== 'undefined' && {
-      pointerEvents: 'none',
-    }),
-  },
-  glowOrbTop: {
-    width: 600,
-    height: 600,
-    right: -200,
-    top: -200,
-    backgroundColor: '#3B82F6',
-    filter: 'blur(120px)',
-    opacity: 0.15,
-  },
-  glowOrbBottom: {
-    width: 500,
-    height: 500,
-    left: -150,
-    bottom: -150,
-    backgroundColor: '#10B981',
-    filter: 'blur(100px)',
-    opacity: 0.15,
-  },
-  scrollContent: {
-    flexGrow: 1,
-    paddingHorizontal: theme.spacing.lg,
-    paddingVertical: theme.spacing.xl,
-  },
   centered: {
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: theme.colors.background,
   },
+  scrollContent: {
+    flexGrow: 1,
+  },
   shell: {
-    width: '100%',
-    maxWidth: 1120,
-    alignSelf: 'center',
-    gap: theme.spacing.lg,
+    flex: 1,
+    minHeight: '100%' as any,
   },
   shellWide: {
     flexDirection: 'row',
-    alignItems: 'stretch',
   },
-  heroPane: {
-    backgroundColor: 'transparent',
-    borderRadius: theme.radius.xl,
-    padding: theme.spacing.lg,
-    gap: theme.spacing.lg,
+  hero: {
+    backgroundColor: theme.colors.surfaceInverse,
+    paddingHorizontal: theme.spacing.xl,
+    paddingVertical: theme.spacing.xxxl,
+    gap: theme.spacing.xl,
+  },
+  heroWide: {
+    flex: 1.1,
+    paddingHorizontal: 56,
+    paddingVertical: 64,
     justifyContent: 'center',
   },
-  badge: {
-    alignSelf: 'flex-start',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: theme.radius.full,
-    backgroundColor: 'rgba(59, 130, 246, 0.15)', // Accent tint
-    color: '#60A5FA', // Bright blue
-    fontWeight: '800',
+  eyebrow: {
+    color: theme.colors.textInverse,
     fontSize: 11,
+    fontWeight: '800',
+    letterSpacing: 2,
     textTransform: 'uppercase',
-    letterSpacing: 1.5,
-    borderWidth: 1,
-    borderColor: 'rgba(59, 130, 246, 0.3)',
+    opacity: 0.7,
   },
   heroTitle: {
-    color: '#FFFFFF',
-    fontSize: 42,
+    color: theme.colors.textInverse,
     fontWeight: '900',
-    lineHeight: 52,
-    letterSpacing: -1,
+    letterSpacing: -2,
   },
-  heroSubtitle: {
-    color: '#94A3B8',
-    fontSize: 18,
-    lineHeight: 28,
-    fontWeight: '400',
-  },
-  heroImage: {
-    width: '100%',
-    height: 200,
-    borderRadius: theme.radius.xl,
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.1)',
-    backgroundColor: '#0F172A',
-    opacity: 0.8,
-  },
-  featureList: {
-    gap: theme.spacing.md,
-    marginTop: 10,
-  },
-  featureRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 16,
-  },
-  featureIconWrap: {
-    width: 36,
-    height: 36,
-    borderRadius: 10,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: 'rgba(16, 185, 129, 0.15)', // Neon green tint
-    borderWidth: 1,
-    borderColor: 'rgba(16, 185, 129, 0.3)',
-  },
-  featureText: {
-    color: '#E2E8F0',
+  heroLead: {
+    color: theme.colors.textInverse,
+    opacity: 0.7,
+    fontSize: 16,
+    lineHeight: 24,
     fontWeight: '500',
-    fontSize: 15,
-    flexShrink: 1,
-  },
-  mobileBranding: {
-    alignItems: 'center',
-    marginBottom: 8,
-    gap: 4,
-  },
-  mobileAppName: {
-    color: '#F8FAFC',
-    fontSize: 22,
-    fontWeight: '900',
-    letterSpacing: 1,
-  },
-  mobileTagline: {
-    color: '#64748B',
-    fontSize: 13,
-    fontWeight: '600',
-  },
-  formCard: {
-    minWidth: 320,
-    zIndex: 1,
     maxWidth: 460,
-    alignSelf: 'center',
-    width: '100%',
-    gap: theme.spacing.lg,
-    paddingHorizontal: 24,
-    paddingVertical: 28,
   },
-  title: {
-    fontSize: 30,
-    fontWeight: '900',
-    color: theme.colors.text,
+  principles: {
+    marginTop: theme.spacing.lg,
+    gap: theme.spacing.md,
   },
-  subtitle: {
-    color: theme.colors.textMuted,
+  principleRow: {
+    flexDirection: 'row',
+    alignItems: 'baseline',
+    gap: 14,
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(255,255,255,0.15)',
+    paddingTop: 12,
+  },
+  principleNum: {
+    color: theme.colors.textInverse,
+    opacity: 0.5,
+    fontSize: 12,
+    fontWeight: '800',
+    letterSpacing: 1,
+    width: 28,
+  },
+  principleText: {
+    flex: 1,
+    color: theme.colors.textInverse,
+    fontSize: 15,
     fontWeight: '600',
-    lineHeight: 21,
+    lineHeight: 22,
   },
-  submitButton: {
-    marginTop: 2,
+  formPane: {
+    flex: 1,
+    backgroundColor: theme.colors.background,
+    paddingHorizontal: theme.spacing.xl,
+    paddingVertical: theme.spacing.xxxl,
+    justifyContent: 'center',
+  },
+  formInner: {
+    width: '100%',
+    maxWidth: 420,
+    alignSelf: 'center',
+    gap: theme.spacing.md,
+  },
+  formEyebrow: {
+    color: theme.colors.textMuted,
+    fontSize: 11,
+    fontWeight: '800',
+    letterSpacing: 1.6,
+    textTransform: 'uppercase',
+  },
+  formTitle: {
+    color: theme.colors.text,
+    fontSize: 36,
+    fontWeight: '900',
+    letterSpacing: -1,
+    lineHeight: 40,
+  },
+  formSub: {
+    color: theme.colors.textMuted,
+    fontSize: 15,
+    fontWeight: '500',
+    lineHeight: 22,
+  },
+  fields: {
+    gap: theme.spacing.md,
+    marginTop: theme.spacing.sm,
   },
   link: {
-    color: theme.colors.accent,
+    color: theme.colors.text,
     fontWeight: '700',
     textAlign: 'center',
+    fontSize: 14,
     marginTop: 4,
+    textDecorationLine: 'underline',
+  },
+  divider: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    marginTop: theme.spacing.sm,
+    marginBottom: 4,
+  },
+  dividerLine: {
+    flex: 1,
+    height: 1,
+    backgroundColor: theme.colors.border,
+  },
+  dividerLabel: {
+    color: theme.colors.textMuted,
+    fontSize: 11,
+    fontWeight: '800',
+    letterSpacing: 1.4,
   },
   error: {
     color: theme.colors.danger,
     fontWeight: '700',
+    fontSize: 13,
     backgroundColor: theme.colors.dangerSoft,
-    borderColor: '#FDA4AF',
-    borderWidth: 1,
-    borderRadius: theme.radius.md,
-    padding: theme.spacing.sm,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    borderLeftWidth: 3,
+    borderLeftColor: theme.colors.danger,
   },
 });
