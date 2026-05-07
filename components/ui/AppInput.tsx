@@ -26,6 +26,8 @@ type AppInputProps = {
   errorText?: string;
 };
 
+// Nike-style input: tiny uppercase eyebrow label above, sharp box, ink border
+// on focus, no shadows.
 export function AppInput({
   label,
   value,
@@ -44,13 +46,18 @@ export function AppInput({
 
   return (
     <View style={[styles.wrap, containerStyle]}>
-      <Text style={[styles.label, focused && styles.labelFocused]}>{label}</Text>
+      <Text style={styles.label}>{label}</Text>
       <TextInput
-        style={[styles.input, focused && styles.inputFocused, !!errorText && styles.inputError]}
+        style={[
+          styles.input,
+          focused && styles.inputFocused,
+          !!errorText && styles.inputError,
+          !editable && styles.inputDisabled,
+        ]}
         value={value}
         onChangeText={onChangeText}
         placeholder={placeholder}
-        placeholderTextColor={theme.colors.textMuted}
+        placeholderTextColor={theme.colors.textSubtle}
         keyboardType={keyboardType}
         secureTextEntry={secureTextEntry}
         maxLength={maxLength}
@@ -67,48 +74,43 @@ export function AppInput({
 
 const styles = StyleSheet.create({
   wrap: {
-    gap: 8,
+    gap: 6,
   },
   label: {
-    color: '#94A3B8', // Slate 400
-    fontWeight: '600',
-    fontSize: 13,
-    letterSpacing: 0.5,
+    color: theme.colors.text,
+    fontWeight: '800',
+    fontSize: 11,
+    letterSpacing: 1.2,
     textTransform: 'uppercase',
   },
-  labelFocused: {
-    color: theme.colors.accent,
-  },
   input: {
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.1)',
-    borderRadius: theme.radius.lg,
-    backgroundColor: 'rgba(15, 23, 42, 0.4)', // Very subtle dark center
-    paddingHorizontal: theme.spacing.lg,
-    paddingVertical: 14,
+    borderWidth: 1.5,
+    borderColor: theme.colors.border,
+    borderRadius: theme.radius.sm,
+    backgroundColor: theme.colors.surface,
+    paddingHorizontal: theme.spacing.md,
+    paddingVertical: 12,
     color: theme.colors.text,
     fontSize: 16,
-    // Add subtle inner shadow for depth effect (web)
-    ...(typeof window !== 'undefined' && {
-      boxShadow: 'inset 0 2px 4px 0 rgba(0, 0, 0, 0.1)',
-    }),
+    fontWeight: '500',
+    ...(typeof window !== 'undefined' && ({ outlineStyle: 'none' } as any)),
   },
   inputFocused: {
-    borderColor: theme.colors.accent,
-    backgroundColor: 'rgba(15, 23, 42, 0.6)',
-    ...(typeof window !== 'undefined' && {
-      boxShadow: `0 0 0 1px ${theme.colors.accent}, inset 0 2px 4px 0 rgba(0, 0, 0, 0.1)`,
-      outlineStyle: 'none',
-    }),
+    borderColor: theme.colors.text,
   },
   inputError: {
     borderColor: theme.colors.danger,
-    backgroundColor: 'rgba(239, 68, 68, 0.05)',
+    backgroundColor: theme.colors.dangerSoft,
+  },
+  inputDisabled: {
+    backgroundColor: theme.colors.surfaceSoft,
+    color: theme.colors.textMuted,
   },
   errorText: {
     color: theme.colors.danger,
     fontSize: 12,
-    fontWeight: '600',
-    marginTop: -2,
+    fontWeight: '700',
+    marginTop: 2,
+    letterSpacing: 0.2,
   },
 });

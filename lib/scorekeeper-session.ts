@@ -1,18 +1,30 @@
-import { signInAnonymously } from 'firebase/auth';
+import { signInAnonymously } from "firebase/auth";
 
-import { auth } from '@/lib/firebase';
-import { type TournamentDocument } from '@/lib/firestore/types';
-import { useAppStore } from '@/store/app.store';
+import { auth } from "@/lib/firebase";
+import {
+  getTournamentPrivateSettings,
+  grantScorekeeperAccess,
+} from "@/lib/firestore/tournaments";
+import { useAppStore } from "@/store/app.store";
 
 export async function activateScorekeeperSession(
   pin: string,
-  tournament: TournamentDocument,
+  tournamentId: string,
 ): Promise<void> {
-  if (pin !== tournament.venuePin) {
-    throw new Error('Invalid PIN');
+  const privateSettings = await getTournamentPrivateSettings(tournamentId);
+
+  if (!privateSettings || pin !== privateSettings.venuePin) {
+    throw new Error("Invalid PIN");
   }
 
   await signInAnonymously(auth);
-  useAppStore.getState().setScorekeeperSession(pin, tournament.id);
-}
 
+  const userId = auth.currentUser?.uid;
+  if (!userId) {
+    throw new Error("Failed to get user ID");
+  }
+
+  await grantScorekeeperAccess(tournamentId, userId);
+
+  useAppStore.getState().setScorekeeperSession(pin, tournamentId);
+}

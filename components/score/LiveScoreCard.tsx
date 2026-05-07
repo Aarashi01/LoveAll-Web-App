@@ -8,6 +8,7 @@ import Animated, {
   withTiming,
 } from 'react-native-reanimated';
 
+import { theme } from '@/constants/theme';
 import { type MatchDocument, type ScoreGame } from '@/lib/firestore/types';
 
 type LiveScoreCardProps = {
@@ -33,7 +34,7 @@ function getActiveGame(match: MatchDocument): ScoreGame {
 function getCompletedGameScores(match: MatchDocument): string {
   const completed = match.scores.filter((g) => g.winner !== null);
   if (completed.length === 0) return '';
-  return completed.map((g) => `${g.p1Score}-${g.p2Score}`).join(' · ');
+  return completed.map((g) => `${g.p1Score}–${g.p2Score}`).join(' · ');
 }
 
 function getGamesWon(match: MatchDocument): { p1: number; p2: number } {
@@ -55,7 +56,6 @@ export function LiveScoreCard({ match, compact = false, dark = false }: LiveScor
       pulseOpacity.value = 1;
       return;
     }
-
     pulseOpacity.value = withRepeat(
       withSequence(
         withTiming(0.4, { duration: 700 }),
@@ -84,23 +84,25 @@ export function LiveScoreCard({ match, compact = false, dark = false }: LiveScor
 
   return (
     <View style={[styles.card, dark && styles.cardDark, compact && styles.cardCompact]}>
-      {/* Header row */}
       <View style={styles.headerRow}>
         <Text style={[styles.meta, dark && styles.metaDark]}>
           {match.category} · {match.round}
-          {typeof match.courtNumber === 'number' ? ` · Court ${match.courtNumber}` : ''}
+          {typeof match.courtNumber === 'number' ? ` · COURT ${match.courtNumber}` : ''}
         </Text>
         <View style={styles.headerRight}>
           {gamesWon.p1 + gamesWon.p2 > 0 && (
-            <View style={styles.gamesWonBadge}>
-              <Text style={styles.gamesWonText}>{gamesWon.p1} - {gamesWon.p2}</Text>
-            </View>
+            <Text style={[styles.gamesWonText, dark && styles.gamesWonTextDark]}>
+              {gamesWon.p1}–{gamesWon.p2}
+            </Text>
           )}
-          <Animated.View style={statusDotStyle} />
+          {match.status === 'live' ? (
+            <Animated.View style={statusDotStyle} />
+          ) : (
+            <View style={styles.dotScheduled} />
+          )}
         </View>
       </View>
 
-      {/* Player 1 row */}
       <View style={[styles.playersRow, isWinner(match.player1Id) && styles.winnerRow]}>
         <View style={styles.nameColumn}>
           <Text
@@ -125,7 +127,6 @@ export function LiveScoreCard({ match, compact = false, dark = false }: LiveScor
         </Text>
       </View>
 
-      {/* Player 2 row */}
       <View style={[styles.playersRow, isWinner(match.player2Id) && styles.winnerRow]}>
         <View style={styles.nameColumn}>
           <Text
@@ -150,7 +151,6 @@ export function LiveScoreCard({ match, compact = false, dark = false }: LiveScor
         </Text>
       </View>
 
-      {/* Completed game scores */}
       {completedScores ? (
         <View style={styles.historyRow}>
           <Text style={[styles.historyText, dark && styles.historyTextDark]}>
@@ -164,29 +164,19 @@ export function LiveScoreCard({ match, compact = false, dark = false }: LiveScor
 
 const styles = StyleSheet.create({
   card: {
-    backgroundColor: 'rgba(255, 255, 255, 0.8)',
-    borderRadius: 20,
-    padding: 16,
+    backgroundColor: theme.colors.surface,
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.5)',
-    gap: 8,
-    ...(typeof window !== 'undefined' && {
-      backdropFilter: 'blur(16px)',
-      boxShadow: '0 8px 32px 0 rgba(0, 0, 0, 0.1)',
-      transition: 'all 0.3s ease',
-    }),
+    borderColor: theme.colors.border,
+    padding: theme.spacing.lg,
+    gap: 10,
   },
   cardCompact: {
-    padding: 14,
-    borderRadius: 16,
-    gap: 6,
+    padding: theme.spacing.md,
+    gap: 8,
   },
   cardDark: {
-    backgroundColor: 'rgba(15, 23, 42, 0.6)',
-    borderColor: 'rgba(255, 255, 255, 0.1)',
-    ...(typeof window !== 'undefined' && {
-      boxShadow: '0 8px 32px 0 rgba(0, 0, 0, 0.4)',
-    }),
+    backgroundColor: theme.colors.surfaceInverse,
+    borderColor: theme.colors.surfaceInverse,
   },
   headerRow: {
     flexDirection: 'row',
@@ -196,44 +186,40 @@ const styles = StyleSheet.create({
   headerRight: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+    gap: 10,
   },
   meta: {
-    fontSize: 13,
-    color: '#64748B',
-    fontWeight: '700',
-    letterSpacing: 0.5,
+    fontSize: 11,
+    color: theme.colors.textMuted,
+    fontWeight: '800',
+    letterSpacing: 1.4,
     textTransform: 'uppercase',
   },
   metaDark: {
-    color: '#94A3B8',
-  },
-  gamesWonBadge: {
-    backgroundColor: 'rgba(59, 130, 246, 0.12)',
-    borderRadius: 8,
-    paddingHorizontal: 8,
-    paddingVertical: 2,
+    color: 'rgba(255,255,255,0.6)',
   },
   gamesWonText: {
-    color: '#60A5FA',
+    color: theme.colors.text,
     fontSize: 13,
     fontWeight: '900',
     letterSpacing: 1,
+    fontVariant: ['tabular-nums'],
+  },
+  gamesWonTextDark: {
+    color: theme.colors.textInverse,
   },
   playersRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     gap: 8,
-    borderRadius: 10,
-    paddingHorizontal: 4,
-    paddingVertical: 2,
   },
   winnerRow: {
-    backgroundColor: 'rgba(16, 185, 129, 0.08)',
-    borderRadius: 10,
-    paddingHorizontal: 8,
-    paddingVertical: 4,
+    // emphasize winner with left rule
+    borderLeftWidth: 3,
+    borderLeftColor: theme.colors.text,
+    paddingLeft: 8,
+    marginLeft: -11,
   },
   nameColumn: {
     flex: 1,
@@ -241,8 +227,8 @@ const styles = StyleSheet.create({
   },
   name: {
     fontSize: 22,
-    color: '#0F172A',
-    fontWeight: '900',
+    color: theme.colors.text,
+    fontWeight: '800',
     letterSpacing: -0.5,
   },
   nameCompact: {
@@ -250,61 +236,63 @@ const styles = StyleSheet.create({
     fontWeight: '800',
   },
   winnerName: {
-    color: '#10B981',
+    color: theme.colors.text,
+    fontWeight: '900',
   },
   partnerName: {
     fontSize: 13,
-    color: '#64748B',
+    color: theme.colors.textMuted,
     fontWeight: '600',
   },
   partnerNameDark: {
-    color: '#475569',
+    color: 'rgba(255,255,255,0.5)',
   },
   score: {
-    fontSize: 52,
+    fontSize: 56,
     lineHeight: 56,
-    color: '#0F172A',
+    color: theme.colors.text,
     fontWeight: '900',
     minWidth: 56,
     textAlign: 'right',
+    letterSpacing: -2,
+    fontVariant: ['tabular-nums'],
   },
   scoreCompact: {
-    fontSize: 38,
+    fontSize: 40,
     lineHeight: 42,
     minWidth: 42,
   },
   dot: {
-    width: 10,
-    height: 10,
-    borderRadius: 999,
+    width: 8,
+    height: 8,
+    borderRadius: theme.radius.full,
   },
   dotLive: {
-    backgroundColor: '#10B981',
-    ...(typeof window !== 'undefined' && {
-      boxShadow: '0 0 12px 2px rgba(16, 185, 129, 0.6)',
-    }),
+    backgroundColor: theme.colors.live,
   },
   dotScheduled: {
-    backgroundColor: '#64748B',
+    backgroundColor: theme.colors.textMuted,
+    width: 8,
+    height: 8,
+    borderRadius: theme.radius.full,
   },
   textDark: {
-    color: '#F8FAFC',
+    color: theme.colors.textInverse,
   },
   historyRow: {
     borderTopWidth: 1,
-    borderTopColor: 'rgba(0, 0, 0, 0.06)',
-    paddingTop: 6,
+    borderTopColor: theme.colors.border,
+    paddingTop: 8,
     marginTop: 2,
   },
   historyText: {
-    color: '#64748B',
+    color: theme.colors.textMuted,
     fontSize: 13,
     fontWeight: '700',
-    letterSpacing: 0.5,
-    textAlign: 'center',
+    letterSpacing: 0.4,
+    fontVariant: ['tabular-nums'],
   },
   historyTextDark: {
-    color: '#475569',
-    borderTopColor: 'rgba(255, 255, 255, 0.06)',
+    color: 'rgba(255,255,255,0.6)',
   },
 });

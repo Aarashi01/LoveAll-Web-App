@@ -1,52 +1,37 @@
-import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { Link, router } from 'expo-router';
-import type { ComponentProps } from 'react';
 import { useEffect, useState } from 'react';
 import {
   ActivityIndicator,
-  Image,
   SafeAreaView,
   ScrollView,
   StyleSheet,
   Text,
   View,
-  useWindowDimensions
+  useWindowDimensions,
 } from 'react-native';
 
 import { AppButton } from '@/components/ui/AppButton';
-import { AppCard } from '@/components/ui/AppCard';
 import { AppInput } from '@/components/ui/AppInput';
 import { theme } from '@/constants/theme';
 import { useAuth } from '@/hooks/useAuth';
 
-const registerFeatures: Array<{
-  icon: ComponentProps<typeof MaterialCommunityIcons>['name'];
-  title: string;
-}> = [
-    {
-      icon: 'account-group-outline',
-      title: 'Manage players and brackets from one dashboard',
-    },
-    {
-      icon: 'scoreboard-outline',
-      title: 'Track match updates and share public results',
-    },
-    {
-      icon: 'shield-check-outline',
-      title: 'Secure organizer access for every event',
-    },
-  ];
+const principles = [
+  'Manage players and brackets in one workspace.',
+  'Track match updates and share public results.',
+  'Secure organizer access for every event.',
+];
 
 export default function RegisterScreen() {
   const { user, loading, error, register } = useAuth();
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [formError, setFormError] = useState<string | null>(null);
   const [fieldErrors, setFieldErrors] = useState<{ name?: string; email?: string; password?: string }>({});
   const [submitting, setSubmitting] = useState(false);
   const { width } = useWindowDimensions();
   const isWide = width >= 980;
+  const heroFontSize = width >= 1100 ? 56 : width >= 720 ? 44 : 38;
+  const heroLineHeight = Math.round(heroFontSize * 1.05);
 
   useEffect(() => {
     if (user && !user.isAnonymous && !loading) {
@@ -55,7 +40,6 @@ export default function RegisterScreen() {
   }, [loading, user]);
 
   const handleRegister = async () => {
-    setFormError(null);
     const nextFieldErrors: { name?: string; email?: string; password?: string } = {};
     if (!name.trim()) nextFieldErrors.name = 'Name is required.';
     if (!email.trim()) nextFieldErrors.email = 'Email is required.';
@@ -71,7 +55,7 @@ export default function RegisterScreen() {
       await register(email.trim(), password, name.trim());
       router.replace('/(organizer)/dashboard');
     } catch {
-      // Error is shown from hook state.
+      // error from hook
     } finally {
       setSubmitting(false);
     }
@@ -80,93 +64,104 @@ export default function RegisterScreen() {
   if (loading) {
     return (
       <SafeAreaView style={styles.centered}>
-        <ActivityIndicator size="large" />
+        <ActivityIndicator size="large" color={theme.colors.text} />
       </SafeAreaView>
     );
   }
 
+  const heroSection = (
+    <View style={[styles.hero, isWide && styles.heroWide]}>
+      <Text style={styles.eyebrow}>LoveAll · New organizer</Text>
+      <Text style={[styles.heroTitle, { fontSize: heroFontSize, lineHeight: heroLineHeight }]}>
+        BUILD YOUR{'\n'}WORKSPACE.
+      </Text>
+      <Text style={styles.heroLead}>
+        Launch a tournament hub with cleaner setup, faster scheduling, and better visibility for teams.
+      </Text>
+      <View style={styles.principles}>
+        {principles.map((line, idx) => (
+          <View key={line} style={styles.principleRow}>
+            <Text style={styles.principleNum}>{String(idx + 1).padStart(2, '0')}</Text>
+            <Text style={styles.principleText}>{line}</Text>
+          </View>
+        ))}
+      </View>
+    </View>
+  );
+
+  const formSection = (
+    <View style={styles.formPane}>
+      <View style={styles.formInner}>
+        <Text style={styles.formEyebrow}>Member · Sign up</Text>
+        <Text style={styles.formTitle}>Create your account.</Text>
+        <Text style={styles.formSub}>Set up your profile to start managing tournaments.</Text>
+
+        <View style={styles.fields}>
+          <AppInput
+            label="Full name"
+            value={name}
+            onChangeText={(text) => {
+              setName(text);
+              if (fieldErrors.name) setFieldErrors((prev) => ({ ...prev, name: undefined }));
+            }}
+            placeholder="Enter your name"
+            errorText={fieldErrors.name}
+          />
+          <AppInput
+            label="Email"
+            autoCapitalize="none"
+            keyboardType="email-address"
+            value={email}
+            onChangeText={(text) => {
+              setEmail(text);
+              if (fieldErrors.email) setFieldErrors((prev) => ({ ...prev, email: undefined }));
+            }}
+            placeholder="you@example.com"
+            errorText={fieldErrors.email}
+          />
+          <AppInput
+            label="Password"
+            secureTextEntry
+            value={password}
+            onChangeText={(text) => {
+              setPassword(text);
+              if (fieldErrors.password) setFieldErrors((prev) => ({ ...prev, password: undefined }));
+            }}
+            placeholder="Create a password"
+            errorText={fieldErrors.password}
+          />
+        </View>
+
+        {error ? <Text style={styles.error}>{error}</Text> : null}
+
+        <AppButton
+          label={submitting ? 'Creating…' : 'Create account'}
+          disabled={submitting}
+          onPress={() => void handleRegister()}
+        />
+
+        <Link href="/(auth)/login" style={styles.link}>
+          Already a member? Sign in
+        </Link>
+      </View>
+    </View>
+  );
+
   return (
     <SafeAreaView style={styles.safeArea}>
-      <View pointerEvents="none" style={styles.backgroundLayer}>
-        <View style={[styles.glowOrb, styles.glowOrbTop]} />
-        <View style={[styles.glowOrb, styles.glowOrbBottom]} />
-      </View>
       <ScrollView contentContainerStyle={styles.scrollContent}>
         <View style={[styles.shell, isWide && styles.shellWide]}>
-          <View style={styles.heroPane}>
-            <Text style={styles.badge}>Setup in Minutes</Text>
-            <Text style={styles.heroTitle}>Create your organizer workspace.</Text>
-            <Text style={styles.heroSubtitle}>
-              Launch a tournament hub with cleaner setup, faster scheduling, and better visibility for teams.
-            </Text>
-            <Image
-              source={require('../../assets/images/splash-icon.png')}
-              style={styles.heroImage}
-              resizeMode="cover"
-            />
-            <View style={styles.featureList}>
-              {registerFeatures.map((item) => (
-                <View key={item.title} style={styles.featureRow}>
-                  <View style={styles.featureIconWrap}>
-                    <MaterialCommunityIcons
-                      name={item.icon}
-                      size={16}
-                      color={theme.colors.accent}
-                    />
-                  </View>
-                  <Text style={styles.featureText}>{item.title}</Text>
-                </View>
-              ))}
-            </View>
-          </View>
-
-          <AppCard style={styles.formCard}>
-            <Text style={styles.title}>Create organizer account</Text>
-            <Text style={styles.subtitle}>Set up your profile to start managing tournaments.</Text>
-            <AppInput
-              label="Full name"
-              value={name}
-              onChangeText={(text) => {
-                setName(text);
-                if (fieldErrors.name) setFieldErrors((prev) => ({ ...prev, name: undefined }));
-              }}
-              placeholder="Enter your name"
-              errorText={fieldErrors.name}
-            />
-            <AppInput
-              label="Email address"
-              autoCapitalize="none"
-              keyboardType="email-address"
-              value={email}
-              onChangeText={(text) => {
-                setEmail(text);
-                if (fieldErrors.email) setFieldErrors((prev) => ({ ...prev, email: undefined }));
-              }}
-              placeholder="you@example.com"
-              errorText={fieldErrors.email}
-            />
-            <AppInput
-              label="Password"
-              secureTextEntry
-              value={password}
-              onChangeText={(text) => {
-                setPassword(text);
-                if (fieldErrors.password) setFieldErrors((prev) => ({ ...prev, password: undefined }));
-              }}
-              placeholder="Create a password"
-              errorText={fieldErrors.password}
-            />
-            {error ? <Text style={styles.error}>{error}</Text> : null}
-            <AppButton
-              label={submitting ? 'Creating...' : 'Create Account'}
-              disabled={submitting}
-              onPress={() => void handleRegister()}
-              style={styles.submitButton}
-            />
-            <Link href="/(auth)/login" style={styles.link}>
-              Already have an account? Sign in
-            </Link>
-          </AppCard>
+          {isWide ? (
+            <>
+              {heroSection}
+              {formSection}
+            </>
+          ) : (
+            <>
+              {formSection}
+              {heroSection}
+            </>
+          )}
         </View>
       </ScrollView>
     </SafeAreaView>
@@ -174,164 +169,123 @@ export default function RegisterScreen() {
 }
 
 const styles = StyleSheet.create({
-  safeArea: {
-    flex: 1,
-    backgroundColor: theme.colors.background,
-  },
-  backgroundLayer: {
-    ...StyleSheet.absoluteFillObject,
-    overflow: 'hidden',
-  },
-  glowOrb: {
-    position: 'absolute',
-    borderRadius: theme.radius.full,
-    opacity: 0.32,
-  },
-  glowOrbTop: {
-    width: 600,
-    height: 600,
-    right: -200,
-    top: -200,
-    backgroundColor: '#3B82F6', // Vibrant blue
-    filter: 'blur(120px)',
-    opacity: 0.15,
-  },
-  glowOrbBottom: {
-    width: 500,
-    height: 500,
-    left: -150,
-    bottom: -150,
-    backgroundColor: '#10B981', // Emerald green
-    filter: 'blur(100px)',
-    opacity: 0.15,
-  },
-  scrollContent: {
-    flexGrow: 1,
-    justifyContent: 'center',
-    paddingHorizontal: theme.spacing.lg,
-    paddingVertical: theme.spacing.xl,
-  },
+  safeArea: { flex: 1, backgroundColor: theme.colors.background },
   centered: {
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: theme.colors.background,
   },
-  shell: {
-    width: '100%',
-    maxWidth: 1120,
-    alignSelf: 'center',
-    gap: theme.spacing.lg,
-  },
-  shellWide: {
-    flexDirection: 'row',
-    alignItems: 'stretch',
-  },
-  heroPane: {
-    flex: 1,
-    backgroundColor: 'transparent',
-    borderRadius: theme.radius.xl,
-    padding: theme.spacing.xl,
+  scrollContent: { flexGrow: 1 },
+  shell: { flex: 1, minHeight: '100%' as any },
+  shellWide: { flexDirection: 'row' },
+  hero: {
+    backgroundColor: theme.colors.surfaceInverse,
+    paddingHorizontal: theme.spacing.xl,
+    paddingVertical: theme.spacing.xxxl,
     gap: theme.spacing.xl,
+  },
+  heroWide: {
+    flex: 1.1,
+    paddingHorizontal: 56,
+    paddingVertical: 64,
     justifyContent: 'center',
   },
-  badge: {
-    alignSelf: 'flex-start',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: theme.radius.full,
-    backgroundColor: 'rgba(59, 130, 246, 0.15)', // Accent tint
-    color: '#60A5FA', // Bright blue
-    fontWeight: '800',
+  eyebrow: {
+    color: theme.colors.textInverse,
     fontSize: 11,
+    fontWeight: '800',
+    letterSpacing: 2,
     textTransform: 'uppercase',
-    letterSpacing: 1.5,
-    borderWidth: 1,
-    borderColor: 'rgba(59, 130, 246, 0.3)',
+    opacity: 0.7,
   },
   heroTitle: {
-    color: '#FFFFFF',
-    fontSize: 42,
+    color: theme.colors.textInverse,
     fontWeight: '900',
-    lineHeight: 52,
-    letterSpacing: -1,
+    letterSpacing: -2,
   },
-  heroSubtitle: {
-    color: '#94A3B8',
-    fontSize: 18,
-    lineHeight: 28,
-    fontWeight: '400',
-  },
-  heroImage: {
-    width: '100%',
-    height: 200,
-    borderRadius: theme.radius.xl,
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.1)',
-    backgroundColor: '#0F172A',
-    opacity: 0.8,
-  },
-  featureList: {
-    gap: theme.spacing.md,
-    marginTop: 10,
-  },
-  featureRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 16,
-  },
-  featureIconWrap: {
-    width: 36,
-    height: 36,
-    borderRadius: 10,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: 'rgba(16, 185, 129, 0.15)', // Neon green tint
-    borderWidth: 1,
-    borderColor: 'rgba(16, 185, 129, 0.3)',
-  },
-  featureText: {
-    color: '#E2E8F0',
+  heroLead: {
+    color: theme.colors.textInverse,
+    opacity: 0.7,
+    fontSize: 16,
+    lineHeight: 24,
     fontWeight: '500',
-    fontSize: 15,
-    flexShrink: 1,
-  },
-  formCard: {
-    flex: 1,
-    minWidth: 320,
     maxWidth: 460,
-    alignSelf: 'center',
-    width: '100%',
-    gap: theme.spacing.xl,
-    paddingHorizontal: 32,
-    paddingVertical: 40,
   },
-  title: {
-    fontSize: 30,
-    fontWeight: '900',
-    color: theme.colors.text,
+  principles: { marginTop: theme.spacing.lg, gap: theme.spacing.md },
+  principleRow: {
+    flexDirection: 'row',
+    alignItems: 'baseline',
+    gap: 14,
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(255,255,255,0.15)',
+    paddingTop: 12,
   },
-  subtitle: {
-    color: theme.colors.textMuted,
+  principleNum: {
+    color: theme.colors.textInverse,
+    opacity: 0.5,
+    fontSize: 12,
+    fontWeight: '800',
+    letterSpacing: 1,
+    width: 28,
+  },
+  principleText: {
+    flex: 1,
+    color: theme.colors.textInverse,
+    fontSize: 15,
     fontWeight: '600',
-    lineHeight: 21,
+    lineHeight: 22,
   },
-  submitButton: {
-    marginTop: 2,
+  formPane: {
+    flex: 1,
+    backgroundColor: theme.colors.background,
+    paddingHorizontal: theme.spacing.xl,
+    paddingVertical: theme.spacing.xxxl,
+    justifyContent: 'center',
   },
+  formInner: {
+    width: '100%',
+    maxWidth: 420,
+    alignSelf: 'center',
+    gap: theme.spacing.md,
+  },
+  formEyebrow: {
+    color: theme.colors.textMuted,
+    fontSize: 11,
+    fontWeight: '800',
+    letterSpacing: 1.6,
+    textTransform: 'uppercase',
+  },
+  formTitle: {
+    color: theme.colors.text,
+    fontSize: 36,
+    fontWeight: '900',
+    letterSpacing: -1,
+    lineHeight: 40,
+  },
+  formSub: {
+    color: theme.colors.textMuted,
+    fontSize: 15,
+    fontWeight: '500',
+    lineHeight: 22,
+  },
+  fields: { gap: theme.spacing.md, marginTop: theme.spacing.sm },
   link: {
-    color: theme.colors.accent,
+    color: theme.colors.text,
     fontWeight: '700',
     textAlign: 'center',
+    fontSize: 14,
     marginTop: 4,
+    textDecorationLine: 'underline',
   },
   error: {
     color: theme.colors.danger,
     fontWeight: '700',
+    fontSize: 13,
     backgroundColor: theme.colors.dangerSoft,
-    borderColor: '#FDA4AF',
-    borderWidth: 1,
-    borderRadius: theme.radius.md,
-    padding: theme.spacing.sm,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    borderLeftWidth: 3,
+    borderLeftColor: theme.colors.danger,
   },
 });

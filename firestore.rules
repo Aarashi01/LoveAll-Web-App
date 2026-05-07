@@ -2,12 +2,22 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
+    // Helper function to check if user is organizer
+    function isOrganizer(tournamentId) {
+      let tournament = get(/databases/$(database)/documents/tournaments/$(tournamentId));
+      return request.auth != null && tournament.data.organizerId == request.auth.uid;
+    }
+
+    // Helper function to check if user is validated scorekeeper for tournament
+    function isValidatedScorekeeper(tournamentId) {
+      let accessDoc = get(/databases/$(database)/documents/tournaments/$(tournamentId)/scorekeeperAccess/$(request.auth.uid));
+      return accessDoc != null && accessDoc.data.validated == true;
+    }
 
     // Users can only read/write their own user document
     match /users/{userId} {
       allow read, write: if request.auth != null && request.auth.uid == userId;
     }
-
 
     // Tournaments: organizer has full control; public read if enabled
     match /tournaments/{tournamentId} {
@@ -17,21 +27,40 @@ service cloud.firestore {
       allow update, delete: if request.auth != null
                             && request.auth.uid == resource.data.organizerId;
 
+      // Private settings subcollection - contains sensitive data like venuePin
+      // Only organizer can read/write this
+      match /private/settings {
+        allow read, write: if isOrganizer(tournamentId);
+      }
+
+      // Scorekeeper access validation - users can only write their own entry
+      // Organizer can manage all entries
+      match /scorekeeperAccess/{userId} {
+        allow read: if isOrganizer(tournamentId) || userId == request.auth.uid;
+        allow write: if userId == request.auth.uid 
+                     && request.resource.data.keys().hasAll(['validated', 'tournamentId', 'validatedAt'])
+                     && request.resource.data.tournamentId == tournamentId
+                     && request.resource.data.validated == true
+                     && request.resource.data.validatedAt is timestamp;
+        allow delete: if isOrganizer(tournamentId);
+      }
 
       // Players sub-collection
       match /players/{playerId} {
         allow read: if get(/databases/$(database)/documents/tournaments/$(tournamentId)).data.publicViewEnabled == true
-                    || (request.auth != null);
-        allow write: if request.auth != null;
+                    || isOrganizer(tournamentId)
+                    || isValidatedScorekeeper(tournamentId);
+        // Only organizer can write to players
+        allow write: if isOrganizer(tournamentId);
       }
-
 
       // Matches sub-collection
       match /matches/{matchId} {
         allow read: if get(/databases/$(database)/documents/tournaments/$(tournamentId)).data.publicViewEnabled == true
-                    || (request.auth != null);
-        // Write allowed if organizer OR if the venuePin was validated (handle in app logic)
-        allow write: if request.auth != null;
+                    || isOrganizer(tournamentId)
+                    || isValidatedScorekeeper(tournamentId);
+        // Only organizer or validated scorekeepers can write to matches
+        allow write: if isOrganizer(tournamentId) || isValidatedScorekeeper(tournamentId);
       }
     }
   }
