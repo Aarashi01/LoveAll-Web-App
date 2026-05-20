@@ -27,130 +27,28 @@ import {
 } from "@/lib/firestore/matches";
 import {
   type MatchDocument,
-  type ScoreGame,
-  type ScoringRules,
   type ServiceCourt,
 } from "@/lib/firestore/types";
 import { activateScorekeeperSession } from "@/lib/scorekeeper-session";
+import {
+  applyScoreChange,
+  gamesNeededToWinMatch,
+  getCurrentGame,
+  getServiceCourt,
+  isDeuce,
+  type Player,
+} from "@/lib/tournament-match-engine";
 import { useAppStore } from "@/store/app.store";
 
 // ---------------------------------------------------------------------------
-// Helpers
+// Helpers (UI / formatting only — domain rules live in tournament-match-engine)
 // ---------------------------------------------------------------------------
 
 type ScoreAction = {
   gameIndex: number;
-  player: "p1" | "p2";
+  player: Player;
   delta: 1 | -1;
 };
-
-function getCurrentGame(match: MatchDocument | null): {
-  index: number;
-  game: ScoreGame;
-} {
-  if (!match || match.scores.length === 0) {
-    return {
-      index: 0,
-      game: {
-        gameNumber: 1,
-        p1Score: 0,
-        p2Score: 0,
-        winner: null,
-        startedAt: null,
-        endedAt: null,
-      },
-    };
-  }
-
-  const openIndex = match.scores.findIndex((score) => score.winner === null);
-  const index = openIndex === -1 ? match.scores.length - 1 : openIndex;
-  return { index, game: match.scores[index] };
-}
-
-function getGameWinner(
-  p1Score: number,
-  p2Score: number,
-  rules: ScoringRules,
-): "p1" | "p2" | null {
-  const high = Math.max(p1Score, p2Score);
-  const low = Math.min(p1Score, p2Score);
-  const diff = high - low;
-
-  if (!rules.deuceEnabled) {
-    if (p1Score >= rules.pointsPerGame) return "p1";
-    if (p2Score >= rules.pointsPerGame) return "p2";
-    return null;
-  }
-
-  if (high >= rules.maxPoints) return p1Score > p2Score ? "p1" : "p2";
-  if (high >= rules.pointsPerGame && diff >= rules.clearBy)
-    return p1Score > p2Score ? "p1" : "p2";
-  return null;
-}
-
-function countWins(scores: ScoreGame[]): { p1: number; p2: number } {
-  return scores.reduce(
-    (acc, score) => {
-      if (score.winner === "p1") acc.p1 += 1;
-      if (score.winner === "p2") acc.p2 += 1;
-      return acc;
-    },
-    { p1: 0, p2: 0 },
-  );
-}
-
-/**
- * BWF service court: right when server's score is even, left when odd.
- */
-function getServiceCourt(serverScore: number): ServiceCourt {
-  return serverScore % 2 === 0 ? "right" : "left";
-}
-
-/**
- * Check if a mid-game interval should trigger:
- * BWF Law says interval at leading score = 11.
- */
-function shouldTriggerMidGameInterval(
-  p1Score: number,
-  p2Score: number,
-  prevP1: number,
-  prevP2: number,
-): boolean {
-  const leadingScore = Math.max(p1Score, p2Score);
-  const prevLeading = Math.max(prevP1, prevP2);
-  return leadingScore >= 11 && prevLeading < 11;
-}
-
-/**
- * Check if change-of-ends should happen (at 11 in game 3).
- */
-function shouldTriggerChangeOfEnds(
-  gameNumber: number,
-  bestOf: number,
-  p1Score: number,
-  p2Score: number,
-  prevP1: number,
-  prevP2: number,
-): boolean {
-  if (gameNumber !== bestOf) return false; // Only in the deciding game
-  const leadingScore = Math.max(p1Score, p2Score);
-  const prevLeading = Math.max(prevP1, prevP2);
-  return leadingScore >= 11 && prevLeading < 11;
-}
-
-function isDeuce(
-  p1Score: number,
-  p2Score: number,
-  rules: ScoringRules,
-): boolean {
-  return (
-    rules.deuceEnabled &&
-    p1Score >= rules.deuceAt &&
-    p2Score >= rules.deuceAt &&
-    p1Score < rules.maxPoints &&
-    p2Score < rules.maxPoints
-  );
-}
 
 function formatElapsed(seconds: number): string {
   const mins = Math.floor(seconds / 60);
@@ -260,7 +158,7 @@ export default function ScoreEntryScreen() {
   );
 
   const gamesToWin = useMemo(
-    () => (tournament ? Math.ceil(tournament.scoringRules.bestOf / 2) : 2),
+    () => (tournament ? gamesNeededToWinMatch(tournament.scoringRules.bestOf) : 2),
     [tournament],
   );
 
@@ -290,149 +188,64 @@ export default function ScoreEntryScreen() {
   // Handlers
   // ---------------------------------------------------------------------------
 
-  const handleScoreChange = async (player: "p1" | "p2", delta: 1 | -1) => {
+  const handleScoreChange = async (player: Player, delta: 1 | -1) => {
     if (!tournamentId || !match || !tournament) return;
 
-    const prevP1 = activeGame.p1Score;
-    const prevP2 = activeGame.p2Score;
-    const nextP1 = player === "p1" ? prevP1 + delta : prevP1;
-    const nextP2 = player === "p2" ? prevP2 + delta : prevP2;
+    const result = applyScoreChange({
+      match,
+      rules: tournament.scoringRules,
+      player,
+      delta,
+    });
+    if (result.rejected) return;
 
-    if (nextP1 < 0 || nextP2 < 0) return;
-
-    // Start match timer on first point
+    // Start match timer on first scoring point.
     if (!matchStartTime && delta === 1) {
       setMatchStartTime(Date.now());
     }
 
-    // Handle initial serve or keep current server if undefined
-    let currentServer = activeGame.currentServer;
-    if (!currentServer && delta === 1) {
-      currentServer = player;
-    }
+    // Persist game-level patch (score, server, side-swap, point history) first;
+    // if the game completed we then write the full scores array (with new game
+    // appended) via updateMatch so the next game is seeded in Firestore too.
+    await updateScore(tournamentId, match.id, result.activeGameIndex, result.gamePatch);
 
-    // Determine if service over happened
-    let nextServer = currentServer;
-    if (delta === 1 && currentServer && currentServer !== player) {
-      nextServer = player;
-    }
-
-    // Determine if sides should be swapped
-    let sidesSwapped = activeGame.sidesSwapped ?? false;
-    const isFinalGame = activeGameIndex === tournament.scoringRules.bestOf - 1;
-    const swapAt =
-      tournament.scoringRules.pointsPerGame === 21
-        ? 11
-        : Math.ceil(tournament.scoringRules.pointsPerGame / 2);
-
-    if (
-      isFinalGame &&
-      !sidesSwapped &&
-      (nextP1 === swapAt || nextP2 === swapAt)
-    ) {
-      sidesSwapped = true;
-    }
-
-    // Append to point history for watch-party score grid
-    const currentPointHistory = activeGame.pointHistory ?? [];
-    const nextPointHistory =
-      delta === 1
-        ? [...currentPointHistory, [nextP1, nextP2] as [number, number]]
-        : currentPointHistory;
-
-    await updateScore(tournamentId, match.id, activeGameIndex, {
-      p1Score: nextP1,
-      p2Score: nextP2,
-      currentServer: nextServer,
-      sidesSwapped,
-      pointHistory: nextPointHistory,
-    });
     setHistory((prev) => [
       ...prev.slice(-4),
-      { gameIndex: activeGameIndex, player, delta },
+      { gameIndex: result.activeGameIndex, player, delta },
     ]);
 
     if (delta === 1) {
       setActiveServer(player);
     }
 
-    if (delta === -1) return;
-
-    // Check for mid-game interval at 11
-    if (shouldTriggerMidGameInterval(nextP1, nextP2, prevP1, prevP2)) {
-      setIntervalType("mid-game");
-      setIntervalMessage(undefined);
+    if (result.gameWinner) {
+      if (result.matchWinner) {
+        const winnerId =
+          result.matchWinner === "p1" ? match.player1Id : match.player2Id;
+        setPendingWinnerId(winnerId);
+        setShowCelebrationModal(true);
+      }
+      await updateMatch(tournamentId, match.id, {
+        scores: result.scores,
+        status: "live",
+      });
     }
 
-    // Check for change of ends at 11 in deciding game
-    if (
-      shouldTriggerChangeOfEnds(
-        activeGame.gameNumber,
-        tournament.scoringRules.bestOf,
-        nextP1,
-        nextP2,
-        prevP1,
-        prevP2,
-      )
-    ) {
-      // This overlaps with mid-game interval — show change-ends instead since it's more important
+    // UI side-effects: surface whichever interval the engine decided to fire.
+    if (result.intervalEvent === "mid-game") {
+      setIntervalType("mid-game");
+      setIntervalMessage(undefined);
+    } else if (result.intervalEvent === "change-ends") {
       setIntervalType("change-ends");
       setIntervalMessage(
         "Change ends at 11 in the deciding game. Players also take a 60-second interval.",
       );
+    } else if (result.intervalEvent === "between-games") {
+      setIntervalType("between-games");
+      setIntervalMessage(
+        "Game complete. Players change ends and take a 2-minute interval.",
+      );
     }
-
-    const winner = getGameWinner(nextP1, nextP2, tournament.scoringRules);
-    if (!winner) return;
-
-    const updatedScores = [...match.scores];
-    updatedScores[activeGameIndex] = {
-      ...updatedScores[activeGameIndex],
-      p1Score: nextP1,
-      p2Score: nextP2,
-      winner,
-    };
-
-    const wins = countWins(updatedScores);
-    const matchWinnerId =
-      wins.p1 >= gamesToWin
-        ? match.player1Id
-        : wins.p2 >= gamesToWin
-          ? match.player2Id
-          : null;
-
-    if (matchWinnerId) {
-      setPendingWinnerId(matchWinnerId);
-      setShowCelebrationModal(true);
-      await updateMatch(tournamentId, match.id, {
-        scores: updatedScores,
-        status: "live",
-      });
-      return;
-    }
-
-    // Start next game
-    if (!updatedScores[activeGameIndex + 1]) {
-      updatedScores.push({
-        gameNumber: updatedScores.length + 1,
-        p1Score: 0,
-        p2Score: 0,
-        winner: null,
-        startedAt: null,
-        endedAt: null,
-      });
-    }
-
-    await updateMatch(tournamentId, match.id, {
-      scores: updatedScores,
-      status: "live",
-    });
-
-    // Between-games interval + change of ends
-    setIntervalType("between-games");
-    setIntervalMessage(
-      "Game complete. Players change ends and take a 2-minute interval.",
-    );
   };
 
   const handleUndo = async () => {
